@@ -208,7 +208,7 @@
   async function saveLead(lead,honey) {
     if(String(honey||'').trim())throw new Error('invalid_form');
     consent.marketing_contact=lead.marketing_contact===true;
-    const normalized={nome:String(lead.name||'').trim().replace(/\s+/g,' '),email:String(lead.email||'').trim().toLowerCase(),telefone:normalizePhone(lead.phone),form_notice_version:cfg.consentVersion,honey:String(honey||'')};
+    const normalized={email:String(lead.email||'').trim().toLowerCase(),telefone:normalizePhone(lead.phone),form_notice_version:cfg.consentVersion,honey:String(honey||'')};
     // Retentativa manual do mesmo cadastro conserva ID; dados alterados geram novo evento.
     if(!pendingLead||JSON.stringify(pendingLead.lead)!==JSON.stringify(normalized))pendingLead=payload('lead_submit',{},normalized);
     const p=pendingLead, result=await serial(p);

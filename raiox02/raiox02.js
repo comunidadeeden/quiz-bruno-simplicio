@@ -246,7 +246,7 @@ async function handleLeadSubmit(event) {
   if(button.disabled)return;
   RX.emit("rx_form_submit_attempt", {screen:"opening"});
   const form=new FormData(element);
-  const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:form.get("marketing_contact")==="on"};
+  const lead={email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:form.get("marketing_contact")==="on"};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
   button.disabled=true;button.textContent="Salvando...";document.querySelector("#form-error").textContent="";
@@ -265,7 +265,6 @@ async function handleLeadSubmit(event) {
 }
 
 function validateLead(lead) {
-  if(lead.name.length<4||lead.name.length>160||lead.name.split(/\s+/).length<2||/[<>@]/.test(lead.name))return {code:"invalid_full_name",message:"Informe seu nome completo, com nome e sobrenome."};
   if(lead.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
   if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
   return null;
@@ -281,7 +280,6 @@ function renderOpening() {
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
     <form class="form opening-form" id="lead-form" novalidate>
-      <div class="field"><label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome completo" maxlength="160" value="${escapeHtml(lead.name || "")}" required></div>
       <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
       <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
