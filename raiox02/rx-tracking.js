@@ -4,8 +4,8 @@
   // RX4: mantém a API RX do site salvo; troca somente o contrato/transporte.
   const oldConfig=w.RX_CONFIG||{};
   const cfg=w.RX_CONFIG={...oldConfig,version:'raiox-direct-v4.4',pageBuild:'rx4.4-vk-always-on-20260929',
-    webhookUrl:'https://nklqcamhkwqictdmictb.supabase.co/functions/v1/raiox01-collect',
-    source:'quiz_raiox02',launch:'raiox01_2026_09',resumeSession:oldConfig.resumeSession!==false,
+    webhookUrl:'https://nklqcamhkwqictdmictb.supabase.co/functions/v1/raiox02-collect',
+    source:'quiz_raiox02',launch:'raiox02_2026_09',resumeSession:oldConfig.resumeSession!==false,
     testMode:oldConfig.testMode===true||new URLSearchParams(w.location.search).get('rx_test')==='1',
     consentVersion:oldConfig.consentVersion||'rx02-2026-09-29',maxRetries:2,webhookTimeoutMs:18000};
   if(w.__RX_DIRECT_V4_INSTALLED)throw new Error('rx_tracking_loaded_twice');
