@@ -166,10 +166,15 @@
 
 .result-fixed-cta.visible {
   display: grid;
+  gap: 10px;
 }
 
 .panel-inner:has(.fixed-cta) {
   padding-bottom: 110px;
+}
+
+.panel-inner:has(.result-fixed-cta) {
+  padding-bottom: 250px;
 }
 
 .insight-card {
@@ -260,9 +265,10 @@
 
 .lot-grid {
   display: grid;
+  width: min(100%, 590px);
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin: 14px auto 24px;
+  margin: 0 auto;
   max-width: 590px;
 }
 
@@ -300,16 +306,17 @@
 }
 
 .lot-card small {
-  color: #64748b;
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #16a34a;
+  color: #fff;
   font-size: 12px;
   font-weight: 800;
 }
 
 .lot-card-current small {
-  display: inline-flex;
-  border-radius: 999px;
-  padding: 5px 8px;
-  background: #16a34a;
+  background: #dc2626;
   color: #fff;
 }
 
