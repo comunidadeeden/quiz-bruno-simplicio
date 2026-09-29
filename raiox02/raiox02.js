@@ -230,7 +230,6 @@ function render() {
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
   if(state.leadSaved)RX.saveCheckpoint(state);
-  if (state.screen === "lead") return renderLead();
   if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
   if (state.screen === "loading") return renderLoading();
@@ -241,33 +240,11 @@ function updateProgress() {
   progressLabel.textContent = state.screen === "step" ? `Etapa ${state.stepIndex + 1} de ${STEPS.length}` : "";
 }
 
-function renderLead() {
-  const lead = state.lead || {};
-  root.innerHTML = panel(`
-    <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1>Preencha seus dados para começar.</h1>
-    <p class="lead">Você receberá o seu resultado e os próximos passos do Workshop Raio-X Humano.</p>
-    <form class="form" id="lead-form" novalidate>
-      <div class="field"><label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome completo" maxlength="160" value="${escapeHtml(lead.name || "")}" required></div>
-      <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
-      <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
-      <label class="rx-contact-consent"><input type="checkbox" name="marketing_contact"> Também autorizo receber novidades e ofertas por e-mail e WhatsApp. Opcional.</label>
-      <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar</button></div>
-    </form>
-    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. Ofertas adicionais dependem da opção acima. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
-  `);
-  document.querySelector("#lead-form").addEventListener("submit", handleLeadSubmit);
-  document.querySelector("#lead-form").addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
-  RX.emit("rx_form_view", {screen:"lead"});
-}
-
 async function handleLeadSubmit(event) {
   event.preventDefault();
   const element=event.currentTarget, button=element.querySelector('button[type="submit"]');
   if(button.disabled)return;
-  RX.emit("rx_form_submit_attempt", {screen:"lead"});
+  RX.emit("rx_form_submit_attempt", {screen:"opening"});
   const form=new FormData(element);
   const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:form.get("marketing_contact")==="on"};
   const error=validateLead(lead);
@@ -277,6 +254,7 @@ async function handleLeadSubmit(event) {
     await RX.saveLead(lead,form.get("company_website"));
     state.lead=lead;state.leadSaved=true;
     saveCheckoutPrefill(lead);
+    RX.emit("quiz_start", {screen:"opening"});
     state.screen="step";
     render();
   } catch(_){
@@ -294,6 +272,7 @@ function validateLead(lead) {
 }
 
 function renderOpening() {
+  const lead = state.lead || {};
   root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
     <h1 class="opening-title">APRENDA ENXERGAR SE UMA PESSOA TEM TRAUMAS OU SOFREU ABUSO OU SE TEM PROBLEMAS COM PAI E MÃE APENAS OLHANDO O ROSTO E O CORPO EM 5 SEGUNDOS!</h1>
@@ -302,22 +281,22 @@ function renderOpening() {
       <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
-    <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
-    <ul class="opening-list opening-benefits">
-      <li>Entender melhor as pessoas antes mesmo da primeira conversa.</li>
-      <li>Identificar traços de personalidade e padrões de comportamento.</li>
-      <li>Reconhecer sinais no rosto que indicam experiências emocionais marcantes.</li>
-      <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
-    </ul>
-    <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
-    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer Meu Teste Agora!!</button></div>
+    <form class="form opening-form" id="lead-form" novalidate>
+      <div class="field"><label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome completo" maxlength="160" value="${escapeHtml(lead.name || "")}" required></div>
+      <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+      <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
+      <label class="rx-contact-consent"><input type="checkbox" name="marketing_contact"> Também autorizo receber novidades e ofertas por e-mail e WhatsApp. Opcional.</label>
+      <div class="error" id="form-error" role="alert"></div>
+      <div class="fixed-cta"><button class="button button-primary" id="start-button" type="submit">Fazer Meu Teste Agora!!</button></div>
+    </form>
+    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. Ofertas adicionais dependem da opção acima. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
-  document.querySelector("#start-button").addEventListener("click", () => {
-    state.captureViewed = true;
-    state.screen = "lead";
-    RX.emit("quiz_start", {screen:"opening"});
-    render();
-  });
+  const form = document.querySelector("#lead-form");
+  form.addEventListener("submit", handleLeadSubmit);
+  form.addEventListener("input", () => RX.emit("rx_form_start", {screen:"opening"}), {once:true});
+  state.captureViewed = true;
+  RX.emit("rx_form_view", {screen:"opening"});
 }
 
 function renderStep() {
