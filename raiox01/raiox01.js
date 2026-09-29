@@ -252,11 +252,10 @@ function renderLead() {
       <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
       <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
-      <label class="rx-contact-consent"><input type="checkbox" name="marketing_contact"> Também autorizo receber novidades e ofertas por e-mail e WhatsApp. Opcional.</label>
       <div class="error" id="form-error" role="alert"></div>
       <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar</button></div>
     </form>
-    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. Ofertas adicionais dependem da opção acima. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
+    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
   document.querySelector("#lead-form").addEventListener("submit", handleLeadSubmit);
   document.querySelector("#lead-form").addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
@@ -269,7 +268,7 @@ async function handleLeadSubmit(event) {
   if(button.disabled)return;
   RX.emit("rx_form_submit_attempt", {screen:"lead"});
   const form=new FormData(element);
-  const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:form.get("marketing_contact")==="on"};
+  const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
   button.disabled=true;button.textContent="Salvando...";document.querySelector("#form-error").textContent="";
