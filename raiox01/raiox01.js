@@ -370,7 +370,7 @@ function renderResult() {
         </vturb-smartplayer>
       </div>
       <div class="workshop-date-card"><span>Workshop Raio-X Humano</span><strong>${RAIOX_CONFIG.workshopDateText}</strong><small>Investimento: ${RAIOX_CONFIG.priceText}</small></div>
-      <div class="fixed-cta result-fixed-cta" id="checkout-cta"><a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Quero aprender a analisar rosto e corpo</a></div>
+      <div class="fixed-cta result-fixed-cta" id="checkout-cta"><a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a></div>
     </div>
   `);
   RX.bindVturb(document.getElementById(player.id));
