@@ -1647,3 +1647,47 @@ button,
   }
 }
 
+/* Mais respiro entre linhas no mobile. */
+@media (max-width: 600px) {
+  .screen:has(.raiox-hero-visual) .opening-title {
+    line-height: 1.18;
+  }
+
+  .screen:has(.raiox-hero-visual) .opening-secondary-title {
+    line-height: 1.22;
+  }
+
+  .screen:has(.raiox-hero-visual) .opening-subtitle {
+    line-height: 1.38;
+  }
+
+  .question-title {
+    line-height: 1.16;
+  }
+
+  .option {
+    line-height: 1.48;
+  }
+
+  .screen .insight-title {
+    line-height: 1.13;
+  }
+
+  .insight-body {
+    line-height: 1.66;
+  }
+
+  .insight-list li {
+    line-height: 1.56;
+  }
+
+  .insight-footer {
+    line-height: 1.56;
+  }
+
+  .result-simple > h1,
+  .loading h2 {
+    line-height: 1.15;
+  }
+}
+
