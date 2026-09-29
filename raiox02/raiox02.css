@@ -16,7 +16,7 @@
   max-width: 700px;
   margin: 8px auto 0;
   padding: 0;
-  font-family: "Montserrat", var(--sans);
+  font-family: var(--serif);
   font-size: clamp(28px, 4.6vw, 38px);
   font-weight: 800;
   line-height: 1.06;
@@ -897,6 +897,106 @@ vturb-smartplayer {
 
   .insight-footer {
     font-size: 15px;
+  }
+}
+
+
+/* Tipografia unificada do RaioX02.
+   Títulos seguem o modelo editorial serifado; leitura e controles usam a fonte limpa de apoio. */
+body,
+p,
+li,
+label,
+input,
+button,
+.option,
+.question-number,
+.eyebrow,
+.result-badge,
+.lot-label,
+.lot-card small,
+.workshop-date-card span,
+.fine-print,
+.progress-label,
+.brand {
+  font-family: var(--sans);
+}
+
+h1,
+h2,
+h3,
+.opening-title,
+.opening-subtitle,
+.question-title,
+.insight-title,
+.result-simple > h1,
+.loading h2,
+.workshop-date-card strong,
+.date-card strong,
+.workshop-content h3 {
+  font-family: var(--serif);
+  letter-spacing: -0.02em;
+}
+
+.opening-title {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.opening-subtitle {
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.question-title {
+  font-weight: 700;
+  line-height: 1.12;
+}
+
+.option {
+  font-weight: 700;
+}
+
+.insight-body,
+.result-copy p,
+.workshop-content p,
+.opening-list li {
+  color: #657084;
+}
+
+.button,
+.field label,
+.question-number,
+.eyebrow,
+.result-badge,
+.lot-label {
+  letter-spacing: .02em;
+}
+
+@media (max-width: 600px) {
+  .opening-title {
+    font-size: clamp(20px, 6.3vw, 24px);
+    line-height: 1.08;
+  }
+
+  .opening-subtitle {
+    font-size: clamp(10px, 3.15vw, 12px);
+    line-height: 1.2;
+  }
+
+  .question-title {
+    font-size: clamp(24px, 7vw, 30px);
+    line-height: 1.08;
+  }
+
+  .result-simple > h1 {
+    font-size: clamp(24px, 7vw, 30px);
+    line-height: 1.1;
+  }
+
+  .loading h2 {
+    font-size: clamp(24px, 7vw, 30px);
+    line-height: 1.1;
   }
 }
 
