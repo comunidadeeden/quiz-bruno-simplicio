@@ -7,6 +7,47 @@ const RAIOX_CONFIG = {
   ctaDelaySeconds: 60
 };
 
+function checkoutPrefillKey() {
+  return `rx01_checkout_prefill_${state?.submissionId || window.RX.getSessionId()}`;
+}
+
+function saveCheckoutPrefill(lead) {
+  if (!lead) return;
+  try {
+    sessionStorage.setItem(checkoutPrefillKey(), JSON.stringify({
+      name: String(lead.name || "").trim(),
+      email: String(lead.email || "").trim().toLowerCase(),
+      phone: String(lead.phone || "").trim()
+    }));
+  } catch (_) {}
+}
+
+function getCheckoutPrefill() {
+  if (state?.lead?.email) return state.lead;
+  try {
+    const raw = sessionStorage.getItem(checkoutPrefillKey());
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    const email = String(saved.email || "").trim().toLowerCase();
+    const name = String(saved.name || "").trim();
+    const phone = String(saved.phone || "").trim();
+    if (!/^\S+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+    return { name, email, phone };
+  } catch (_) {
+    return null;
+  }
+}
+
+function splitBrazilPhoneForCheckout(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  if (digits.length !== 10 && digits.length !== 11) return null;
+  return { areaCode: digits.slice(0, 2), number: digits.slice(2) };
+}
+
 const VSL_PLAYERS = {
   terapeuta: {
     id: "vid-6a42eb103f9c960ae39bbb50",
@@ -235,6 +276,7 @@ async function handleLeadSubmit(event) {
   try {
     await RX.saveLead(lead,form.get("company_website"));
     state.lead=lead;state.leadSaved=true;
+    saveCheckoutPrefill(lead);
     state.screen="step";
     render();
   } catch(_){
@@ -419,10 +461,21 @@ function loadVturbPlayer(player) {
 function buildCheckoutUrl() {
   const url = new URL(RAIOX_CONFIG.checkoutUrl);
   Object.entries(RX.getAttribution()).forEach(([key, value]) => url.searchParams.set(key, value));
-  url.searchParams.set("src", state.utms.src || RAIOX_CONFIG.source);
-  // Não colocar nome, telefone, e-mail ou perfil nas URLs de checkout.
-  url.searchParams.set("src", RX.getAttribution().src || RAIOX_CONFIG.source);
+  url.searchParams.set("src", RX.getAttribution().src || state.utms.src || RAIOX_CONFIG.source);
   if(RX_CONFIG.correlateCheckout)url.searchParams.set("sck",RX.checkoutSck(url.searchParams.get("sck")));
+
+  const lead = getCheckoutPrefill();
+  if (lead) {
+    if (lead.name) url.searchParams.set("name", String(lead.name).trim());
+    if (lead.email) url.searchParams.set("email", String(lead.email).trim().toLowerCase());
+
+    const phone = splitBrazilPhoneForCheckout(lead.phone);
+    if (phone) {
+      url.searchParams.set("phoneac", phone.areaCode);
+      url.searchParams.set("phonenumber", phone.number);
+    }
+  }
+
   return url.toString();
 }
 
