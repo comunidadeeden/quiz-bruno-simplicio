@@ -273,7 +273,10 @@ function validateLead(lead) {
 function renderOpening() {
   const lead = state.lead || {};
   root.innerHTML = panel(`
-    <span class="eyebrow">Workshop Raio-X Humano</span>
+    <figure class="raiox-hero-visual">
+      <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+      <span class="raiox-scan-line" aria-hidden="true"></span>
+    </figure>
     <h1 class="opening-title">
       <span class="opening-line">APRENDA ENXERGAR SE UMA PESSOA</span>
       <span class="opening-line">TEM TRAUMAS OU SOFREU ABUSO OU</span>
@@ -281,10 +284,6 @@ function renderOpening() {
     </h1>
     <h2 class="opening-secondary-title">APENAS OLHANDO O ROSTO E O CORPO EM 5 SEGUNDOS!</h2>
     <p class="opening-subtitle">EM APENAS 2 NOITES AO VIVO COM MATERIAL DE APOIO NA PRÁTICA</p>
-    <figure class="raiox-hero-visual">
-      <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
-      <span class="raiox-scan-line" aria-hidden="true"></span>
-    </figure>
     <form class="form opening-form" id="lead-form" novalidate>
       <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
       <div class="field"><label for="phone">Telefone ( Whatsapp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
