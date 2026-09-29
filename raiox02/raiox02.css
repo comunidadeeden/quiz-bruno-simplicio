@@ -493,11 +493,11 @@ vturb-smartplayer {
 
   .opening-subtitle {
     max-width: 100%;
-    margin-top: 7px;
+    margin-top: 6px;
     padding: 0 2px;
-    font-size: clamp(13px, 4.2vw, 16px);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-size: clamp(11px, 3.6vw, 14px);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
     white-space: nowrap;
   }
 
@@ -730,7 +730,7 @@ vturb-smartplayer {
   }
 
   .opening-subtitle {
-    font-size: 13px;
+    font-size: 11px;
   }
 
   .question-title,
