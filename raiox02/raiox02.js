@@ -280,8 +280,8 @@ function renderOpening() {
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
     <form class="form opening-form" id="lead-form" novalidate>
-      <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+      <div class="field"><label for="phone">Telefone ( Whatsapp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
       <div class="fixed-cta"><button class="button button-primary" id="start-button" type="submit">QUERO APRENDER</button></div>
