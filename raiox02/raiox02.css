@@ -13,14 +13,19 @@
 }
 
 .opening-title {
-  max-width: 690px;
+  max-width: 700px;
   margin: 8px auto 0;
-  padding: 0 6px;
+  padding: 0;
   font-family: "Montserrat", var(--sans);
-  font-size: clamp(26px, 5.2vw, 40px);
+  font-size: clamp(28px, 4.6vw, 38px);
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.06;
+  letter-spacing: -0.025em;
   text-align: center;
+}
+
+.opening-title .opening-line {
+  display: block;
 }
 
 .opening-subtitle {
@@ -289,7 +294,9 @@
 
 @media (max-width: 520px) {
   .panel-inner { padding: 20px 18px; }
-  .opening-title { font-size: 20px; line-height: 1.12; }
+  .opening-title { font-size: 20px; line-height: 1.12; letter-spacing: -0.015em; }
+  .opening-title .opening-line { display: inline; }
+  .opening-title .opening-line:not(:last-child)::after { content: " "; }
   .opening-subtitle { font-size: 17px; line-height: 1.15; }
   .screen:has(.raiox-hero-visual) .eyebrow { font-size: 11px; margin-bottom: 8px; }
   .raiox-hero-visual { width: 100%; }

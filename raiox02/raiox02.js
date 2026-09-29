@@ -274,7 +274,13 @@ function renderOpening() {
   const lead = state.lead || {};
   root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1 class="opening-title">APRENDA ENXERGAR SE UMA PESSOA TEM TRAUMAS OU SOFREU ABUSO OU SE TEM PROBLEMAS COM PAI E MÃE APENAS OLHANDO O ROSTO E O CORPO EM 5 SEGUNDOS!</h1>
+    <h1 class="opening-title">
+      <span class="opening-line">APRENDA ENXERGAR SE UMA PESSOA</span>
+      <span class="opening-line">TEM TRAUMAS OU SOFREU ABUSO OU</span>
+      <span class="opening-line">SE TEM PROBLEMAS COM PAI E MÃE</span>
+      <span class="opening-line">APENAS OLHANDO O ROSTO E O</span>
+      <span class="opening-line">CORPO EM 5 SEGUNDOS!</span>
+    </h1>
     <h2 class="opening-subtitle">EM APENAS 2 NOITES AO VIVO</h2>
     <figure class="raiox-hero-visual">
       <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
