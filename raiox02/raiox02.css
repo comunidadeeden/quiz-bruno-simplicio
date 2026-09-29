@@ -1234,3 +1234,14 @@ button,
   }
 }
 
+/* Espaço extra entre o texto de apoio e o formulário da abertura. */
+.screen:has(.raiox-hero-visual) .opening-form {
+  margin-top: 30px;
+}
+
+@media (max-width: 600px) {
+  .screen:has(.raiox-hero-visual) .opening-form {
+    margin-top: 22px;
+  }
+}
+
