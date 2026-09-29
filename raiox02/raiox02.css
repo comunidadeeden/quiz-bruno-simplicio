@@ -769,3 +769,134 @@ vturb-smartplayer {
   }
 }
 
+/* Ponto de Observação: hierarquia visual baseada no modelo aprovado. */
+.insight-eyebrow {
+  margin-bottom: 12px;
+}
+
+.insight-title {
+  max-width: 620px;
+  margin: 0 auto 22px;
+  font-family: var(--serif);
+  font-size: clamp(30px, 5.4vw, 42px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.insight-card {
+  max-width: 610px;
+  margin: 0 auto;
+  border: 1px solid #d5e1ec;
+  border-radius: 20px;
+  padding: 28px 30px;
+  background: rgba(255,255,255,.72);
+}
+
+.insight-body {
+  margin-bottom: 20px;
+  color: #657084;
+  font-size: 17px;
+  line-height: 1.62;
+  text-align: left;
+}
+
+.insight-list {
+  margin: 0 0 24px;
+}
+
+.insight-list li {
+  margin-bottom: 11px;
+  padding-left: 24px;
+  color: #657084;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.insight-list li::before {
+  top: .12em;
+  color: var(--gold);
+  font-size: 21px;
+}
+
+.insight-footer {
+  margin: 0;
+  color: var(--navy);
+  font-size: 18px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.insight-footer strong {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+@media (max-width: 600px) {
+  .insight-eyebrow {
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: .14em;
+  }
+
+  .screen .insight-title {
+    max-width: 100%;
+    margin-bottom: 18px;
+    font-size: clamp(29px, 8.4vw, 34px);
+    line-height: 1.06;
+    letter-spacing: -0.025em;
+  }
+
+  .insight-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 22px 20px;
+    border-radius: 17px;
+  }
+
+  .insight-body {
+    margin-bottom: 18px;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .insight-list {
+    margin-bottom: 22px;
+  }
+
+  .insight-list li {
+    margin-bottom: 10px;
+    padding-left: 23px;
+    font-size: 15px;
+    line-height: 1.42;
+  }
+
+  .insight-footer {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 380px) {
+  .screen .insight-title {
+    font-size: 27px;
+  }
+
+  .insight-card {
+    padding: 19px 17px;
+  }
+
+  .insight-body {
+    font-size: 15px;
+  }
+
+  .insight-list li {
+    font-size: 14px;
+  }
+
+  .insight-footer {
+    font-size: 15px;
+  }
+}
+

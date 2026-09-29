@@ -325,12 +325,12 @@ function markStepCompleted(stepId) {
 function renderInsight(step, progress) {
   root.innerHTML = panel(`
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
-    <span class="eyebrow">Ponto de observação</span>
-    <h2>${step.title}</h2>
+    <span class="eyebrow insight-eyebrow">Ponto de observação</span>
+    <h2 class="insight-title">${step.title}</h2>
     <div class="insight-card">
-      <p>${step.body}</p>
-      <ul class="opening-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
-      <p><strong>${step.footer}</strong></p>
+      <p class="insight-body">${step.body}</p>
+      <ul class="opening-list insight-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
+      <p class="insight-footer"><strong>${step.footer}</strong></p>
     </div>
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
