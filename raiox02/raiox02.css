@@ -16,6 +16,7 @@
   max-width: 640px;
   margin: 8px auto 0;
   padding: 0 6px;
+  font-family: "Montserrat", var(--sans);
   font-size: clamp(20px, 4.2vw, 28px);
   line-height: 1.18;
 }
