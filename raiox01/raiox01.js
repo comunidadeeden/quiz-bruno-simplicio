@@ -267,7 +267,7 @@ function renderOpening() {
       <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
     </ul>
     <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
-    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Garantir minha vaga</button></div>
+    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer Meu Teste</button></div>
   `);
   document.querySelector("#start-button").addEventListener("click", () => {
     state.captureViewed = true;
