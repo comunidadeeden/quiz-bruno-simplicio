@@ -296,7 +296,7 @@ function validateLead(lead) {
 function renderOpening() {
   root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1 class="opening-title">Você acredita que é possível descobrir muito sobre uma pessoa apenas observando seu rosto e o formato do seu corpo?</h1>
+    <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
     <figure class="raiox-hero-visual">
       <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
