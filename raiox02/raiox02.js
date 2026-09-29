@@ -1,16 +1,52 @@
 const RAIOX_CONFIG = {
   checkoutUrl: "https://pay.hotmart.com/P106544757H",
-  leadWebhookUrl: "https://script.google.com/macros/s/AKfycbxyrI0-XkxJF9vw2Xb-1uEJzaWJhufCa27L6Uhi_NxFp-RyRQxjVZxwCyX6pfT2g6xLYA/exec",
+  leadWebhookUrl: window.RX_CONFIG.webhookUrl,
   source: "quiz_raiox02",
-  quizVariant: "raiox02",
-  storageKey: "raiox02_lead",
-  sheetTabName: "Leads Raio X 02",
-  spreadsheetId: "1E6ef9y2f-q7116PLiHRVwOE6W2ocxC35SYhe3vXB-BA",
-  sheetGid: "394444485",
   workshopDateText: "6 e 7 de Outubro, às 20h · ao vivo",
   priceText: "R$37",
   ctaDelaySeconds: 60
 };
+
+function checkoutPrefillKey() {
+  return `rx02_checkout_prefill_${state?.submissionId || window.RX.getSessionId()}`;
+}
+
+function saveCheckoutPrefill(lead) {
+  if (!lead) return;
+  try {
+    sessionStorage.setItem(checkoutPrefillKey(), JSON.stringify({
+      name: String(lead.name || "").trim(),
+      email: String(lead.email || "").trim().toLowerCase(),
+      phone: String(lead.phone || "").trim()
+    }));
+  } catch (_) {}
+}
+
+function getCheckoutPrefill() {
+  if (state?.lead?.email) return state.lead;
+  try {
+    const raw = sessionStorage.getItem(checkoutPrefillKey());
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    const email = String(saved.email || "").trim().toLowerCase();
+    const name = String(saved.name || "").trim();
+    const phone = String(saved.phone || "").trim();
+    if (!/^\S+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+    return { name, email, phone };
+  } catch (_) {
+    return null;
+  }
+}
+
+function splitBrazilPhoneForCheckout(value) {
+  let digits = String(value || "").replace(/\D/g, "");
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  if (digits.length !== 10 && digits.length !== 11) return null;
+  return { areaCode: digits.slice(0, 2), number: digits.slice(2) };
+}
 
 const VSL_PLAYERS = {
   terapeuta: {
@@ -145,6 +181,21 @@ const RESULTS = {
 const root = document.querySelector("#quiz-root");
 const progressLabel = document.querySelector("#progress-label");
 let state = createState();
+// Resume only the state whose previous requests were acknowledged; no PII is restored.
+const resumed=RX.getCheckpoint();
+if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]?.id===id)){
+  const count=resumed.completedSteps.length;
+  const consistent=STEPS.filter(s=>s.type==='question'&&resumed.completedSteps.includes(s.id))
+    .every(s=>Number.isInteger(resumed.answerIndexes[s.id])&&resumed.answerIndexes[s.id]>=0&&resumed.answerIndexes[s.id]<s.options.length);
+  if(consistent){
+    state={...state,...resumed,lead:null,stepIndex:count,screen:count<7?'step':resumed.screen==='result'?'result':'loading'};
+    for(const step of STEPS.filter(s=>s.type==='question')){
+      const idx=state.answerIndexes[step.id];if(Number.isInteger(idx)&&step.options[idx])state.answers[step.id]=step.options[idx].label;
+    }
+    state.profile=STEPS[0].options[state.answerIndexes.profile]?.profile||'';
+  }
+}
+
 
 function createState() {
   const startedAt = new Date().toISOString();
@@ -152,19 +203,14 @@ function createState() {
     screen: "opening",
     stepIndex: 0,
     lead: null,
+    leadSaved: false,
     answers: {},
+    answerIndexes: {},
+    completedSteps: [], // Etapas efetivamente respondidas/continuadas nesta tentativa.
     profile: "",
     utms: getTrackingParams(),
-    submissionId: createSubmissionId(),
+    submissionId: window.RX.getSessionId(),
     firstSentAt: startedAt,
-    openingViewedAt: startedAt,
-    quizStartedAt: "",
-    captureViewedAt: "",
-    leadSubmittedAt: "",
-    quizCompletedAt: "",
-    resultViewedAt: "",
-    checkoutClickedAt: "",
-    testMode: window.RAIOX_TEST_MODE === true || new URLSearchParams(window.location.search).get("test_mode") === "1",
     captureViewed: false,
     resultViewed: false,
     checkoutClicked: false
@@ -172,18 +218,18 @@ function createState() {
 }
 
 function getTrackingParams() {
-  const params = new URLSearchParams(window.location.search);
-  return ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "gclid", "src", "sck"].reduce((data, key) => {
-    if (params.has(key)) data[key] = params.get(key);
-    return data;
-  }, {});
+  return window.RX.getAttribution();
 }
+
 
 function panel(content) { return `<section class="screen panel"><div class="panel-inner">${content}</div></section>`; }
 
 function render() {
   window.scrollTo({ top: 0, behavior: "smooth" });
   updateProgress();
+  const current=STEPS[state.stepIndex];
+  RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
+  if(state.leadSaved)RX.saveCheckpoint(state);
   if (state.screen === "lead") return renderLead();
   if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
@@ -199,48 +245,60 @@ function renderLead() {
   const lead = state.lead || {};
   root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1>Seu resultado está pronto.</h1>
-    <p class="lead">Preencha seus dados para descobrir o que suas respostas revelam e receber os próximos passos do Workshop Raio-X Humano.</p>
+    <h1>Preencha seus dados para começar.</h1>
+    <p class="lead">Você receberá o seu resultado e os próximos passos do Workshop Raio-X Humano.</p>
     <form class="form" id="lead-form" novalidate>
-      <div class="field"><label for="name">Nome</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome" value="${escapeHtml(lead.name || "")}" required></div>
-      <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="field"><label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome completo" maxlength="160" value="${escapeHtml(lead.name || "")}" required></div>
+      <div class="field"><label for="email">Melhor e-mail</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+      <div class="field"><label for="phone">WhatsApp</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
+      <label class="rx-contact-consent"><input type="checkbox" name="marketing_contact"> Também autorizo receber novidades e ofertas por e-mail e WhatsApp. Opcional.</label>
       <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" type="submit">Ver meu resultado</button></div>
+      <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar</button></div>
     </form>
-    <p class="fine-print">Seus dados serão usados para enviar informações sobre seu resultado e sobre o Workshop Raio-X Humano.</p>
+    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. Ofertas adicionais dependem da opção acima. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
   document.querySelector("#lead-form").addEventListener("submit", handleLeadSubmit);
+  document.querySelector("#lead-form").addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
+  RX.emit("rx_form_view", {screen:"lead"});
 }
 
-function handleLeadSubmit(event) {
+async function handleLeadSubmit(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const lead = { name: String(form.get("name") || "").trim(), email: String(form.get("email") || "").trim(), phone: String(form.get("phone") || "").trim() };
-  const error = validateLead(lead);
-  if (error) return document.querySelector("#form-error").textContent = error;
-  state.lead = lead;
-  localStorage.setItem(RAIOX_CONFIG.storageKey, JSON.stringify(lead));
-  state.leadSubmittedAt = new Date().toISOString();
-  sendLeadEvent("lead_submitted");
-  trackEvent("raiox02_lead_submit");
-  state.screen = "loading";
-  render();
+  const element=event.currentTarget, button=element.querySelector('button[type="submit"]');
+  if(button.disabled)return;
+  RX.emit("rx_form_submit_attempt", {screen:"lead"});
+  const form=new FormData(element);
+  const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:form.get("marketing_contact")==="on"};
+  const error=validateLead(lead);
+  if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
+  button.disabled=true;button.textContent="Salvando...";document.querySelector("#form-error").textContent="";
+  try {
+    await RX.saveLead(lead,form.get("company_website"));
+    state.lead=lead;state.leadSaved=true;
+    saveCheckoutPrefill(lead);
+    state.screen="step";
+    render();
+  } catch(_){
+    document.querySelector("#form-error").textContent="Não foi possível confirmar o cadastro. Verifique sua conexão e tente novamente. Seus dados continuam no formulário.";
+    RX.emit("rx_form_submit_error",{error_code:"save_failed"});
+    button.disabled=false;button.textContent="Tentar novamente";
+  }
 }
 
 function validateLead(lead) {
-  if (lead.name.length < 2) return "Informe seu nome.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) return "Informe um e-mail válido.";
-  if (lead.phone.replace(/\D/g, "").length < 8) return "Informe um WhatsApp válido.";
-  return "";
+  if(lead.name.length<4||lead.name.length>160||lead.name.split(/\s+/).length<2||/[<>@]/.test(lead.name))return {code:"invalid_full_name",message:"Informe seu nome completo, com nome e sobrenome."};
+  if(lead.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
+  if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
+  return null;
 }
 
 function renderOpening() {
   root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1 class="opening-title">Você acredita que é possível descobrir muito sobre uma pessoa apenas observando seu rosto e o formato do seu corpo?</h1>
+    <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
     <figure class="raiox-hero-visual">
-      <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+      <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
     <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
@@ -251,13 +309,12 @@ function renderOpening() {
       <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
     </ul>
     <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
-    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Garantir minha vaga</button></div>
+    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer Meu Teste Agora!!</button></div>
   `);
   document.querySelector("#start-button").addEventListener("click", () => {
-    state.quizStartedAt = new Date().toISOString();
-    state.screen = "step";
-    sendLeadEvent("quiz_start");
-    trackEvent("raiox02_start");
+    state.captureViewed = true;
+    state.screen = "lead";
+    RX.emit("quiz_start", {screen:"opening"});
     render();
   });
 }
@@ -265,6 +322,7 @@ function renderOpening() {
 function renderStep() {
   const step = STEPS[state.stepIndex];
   const progress = ((state.stepIndex + 1) / STEPS.length) * 100;
+  RX.emit("quiz_step_view", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
   if (step.type === "insight") return renderInsight(step, progress);
   root.innerHTML = panel(`
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
@@ -275,6 +333,10 @@ function renderStep() {
     </div>
   `);
   document.querySelectorAll(".option").forEach((button) => button.addEventListener("click", () => answerStep(step, Number(button.dataset.index), button)));
+}
+
+function markStepCompleted(stepId) {
+  if (!state.completedSteps.includes(stepId)) state.completedSteps.push(stepId);
 }
 
 function renderInsight(step, progress) {
@@ -289,41 +351,51 @@ function renderInsight(step, progress) {
     </div>
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
-  document.querySelector("#continue-button").addEventListener("click", () => { state.stepIndex += 1; trackEvent("raiox02_insight_continue", { insight: step.id }); render(); });
+  RX.emit("quiz_insight_view", {step_id:step.id,step_index:state.stepIndex+1});
+  document.querySelector("#continue-button").addEventListener("click", async () => {
+    const button=document.querySelector("#continue-button");button.disabled=true;clearSaveError();
+    try {
+      await RX.saveProgress("quiz_insight_continue", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
+      markStepCompleted(step.id);state.stepIndex+=1;render();
+    } catch (_) {button.disabled=false;showSaveError("Não conseguimos salvar esta etapa. Verifique sua conexão e toque em Continuar novamente.");}
+  });
 }
 
-function answerStep(step, optionIndex, button) {
-  const option = step.options[optionIndex];
-  document.querySelectorAll(".option").forEach((item) => item.disabled = true);
-  button.classList.add("selected");
-  if (option.profile) state.profile = option.profile;
-  state.answers[step.id] = option.label;
-  sendLeadEvent("partial", step.id);
-  trackEvent("raiox02_answer", { question: step.id, profile: state.profile });
-  window.setTimeout(() => {
-    state.stepIndex += 1;
-    if (state.stepIndex >= STEPS.length) {
-      state.captureViewed = true;
-      state.captureViewedAt = new Date().toISOString();
-      state.screen = "lead";
-      sendLeadEvent("capture_view");
-    }
-    render();
-  }, 260);
+function clearSaveError(){document.querySelector("#quiz-save-error")?.remove();}
+function showSaveError(message){
+  clearSaveError();const box=document.createElement("p");box.id="quiz-save-error";box.className="error";box.setAttribute("role","alert");box.textContent=message;
+  const target=document.querySelector(".panel-inner");if(target)target.appendChild(box);
+}
+async function answerStep(step, optionIndex, button) {
+  const option=step.options[optionIndex];
+  document.querySelectorAll(".option").forEach(item=>item.disabled=true);button.classList.add("selected");clearSaveError();
+  const completed=state.completedSteps.includes(step.id)?[...state.completedSteps]:[...state.completedSteps,step.id];
+  try {
+    await RX.saveProgress("quiz_answer", {question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:state.stepIndex+1,option_count:step.options.length,completed_steps:completed});
+    if(option.profile)state.profile=option.profile;
+    state.answers[step.id]=option.label;state.answerIndexes[step.id]=optionIndex;markStepCompleted(step.id);
+    RX.emit("quiz_step_complete",{step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
+    state.stepIndex+=1;if(state.stepIndex>=STEPS.length)state.screen="loading";render();
+  } catch (_) {
+    document.querySelectorAll(".option").forEach(item=>{item.disabled=false;item.classList.remove("selected");});
+    showSaveError("Não conseguimos salvar sua resposta. Verifique sua conexão e selecione a opção novamente.");
+  }
 }
 
-function renderLoading() {
-  root.innerHTML = panel(`<div class="loading"><div class="loading-ring" aria-hidden="true"></div><h2>Organizando seu resultado...</h2><p>Estamos conectando suas respostas com o caminho mais coerente para você.</p></div>`);
-  window.setTimeout(() => {
-    const completedAt = new Date().toISOString();
-    state.screen = "result";
-    state.resultViewed = true;
-    state.quizCompletedAt = completedAt;
-    state.resultViewedAt = completedAt;
-    sendLeadEvent("quiz_completed");
-    trackEvent("raiox02_result_view", { profile: state.profile });
-    render();
-  }, 750);
+let completionInFlight=false;
+async function renderLoading() {
+  if(completionInFlight)return;completionInFlight=true;
+  root.innerHTML=panel(`<div class="loading"><div class="loading-ring" aria-hidden="true"></div><h2>Organizando seu resultado...</h2><p>Estamos conectando suas respostas com o caminho mais coerente para você.</p></div>`);
+  try {
+    const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};});
+    const result=await RX.saveProgress("quiz_complete",{step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]});
+    if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==5 || Number(result.quiz_status?.etapas_concluidas)!==7))throw new Error("completion_not_confirmed");
+    state.screen="result";state.resultViewed=true;completionInFlight=false;render();
+  } catch (_) {
+    completionInFlight=false;
+    root.innerHTML=panel(`<h2>Precisamos confirmar suas respostas.</h2><p>Não foi possível concluir a gravação agora. Suas respostas continuam nesta página. Toque abaixo para tentar novamente.</p><button class="button button-primary" id="retry-completion" type="button">Tentar salvar novamente</button>`);
+    document.querySelector("#retry-completion").addEventListener("click",renderLoading);
+  }
 }
 
 function renderResult() {
@@ -339,18 +411,37 @@ function renderResult() {
           <div class="vturb-player-placeholder"></div>
         </vturb-smartplayer>
       </div>
-      <div class="workshop-date-card"><span>Workshop Raio-X Humano</span><strong>${RAIOX_CONFIG.workshopDateText}</strong><small>Investimento: ${RAIOX_CONFIG.priceText}</small></div>
-      <div class="fixed-cta result-fixed-cta" id="checkout-cta"><a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Quero aprender a analisar rosto e corpo</a></div>
+      <div class="workshop-date-card"><span>Workshop Raio-X Humano</span><strong>${RAIOX_CONFIG.workshopDateText}</strong></div>
+      <div class="fixed-cta result-fixed-cta" id="checkout-cta">
+        <div class="lot-grid" aria-label="Lotes do Workshop Raio-X Humano">
+          <div class="lot-card lot-card-current">
+            <span class="lot-label">1º lote</span>
+            <strong>R$37</strong>
+            <small>Encerra em breve</small>
+          </div>
+          <div class="lot-card">
+            <span class="lot-label">2º lote</span>
+            <strong>R$79</strong>
+            <small>Em breve</small>
+          </div>
+          <div class="lot-card">
+            <span class="lot-label">3º lote</span>
+            <strong>R$147</strong>
+            <small>Em breve</small>
+          </div>
+        </div>
+        <a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a>
+      </div>
     </div>
   `);
+  RX.bindVturb(document.getElementById(player.id));
   loadVturbPlayer(player);
-  window.setTimeout(() => document.querySelector("#checkout-cta")?.classList.add("visible"), (state.testMode ? 0 : RAIOX_CONFIG.ctaDelaySeconds) * 1000);
-  document.querySelector("#checkout-button").addEventListener("click", (event) => {
-    if (state.testMode) event.preventDefault();
-    state.checkoutClicked = true;
-    state.checkoutClickedAt = new Date().toISOString();
-    sendLeadEvent("checkout_clicked");
-    trackEvent("raiox02_checkout_click", { profile: state.profile, vsl_profile: vslProfile, test_mode: state.testMode });
+  RX.emit("quiz_result_view", {screen:"result"});
+  RX.emit("view_item", {currency:"BRL",value:37,screen:"result"});
+  window.setTimeout(() => {const cta=document.querySelector("#checkout-cta");if(cta){cta.classList.add("visible");RX.emit("rx_cta_view",{element_id:"checkout-button",cta_delay_seconds:RAIOX_CONFIG.ctaDelaySeconds});}}, RAIOX_CONFIG.ctaDelaySeconds * 1000);
+  document.querySelector("#checkout-button").addEventListener("click", () => {
+    state.checkoutClicked = true;RX.saveCheckpoint(state);
+    RX.emit("rx_checkout_click", {element_id:"checkout-button",link_domain:"pay.hotmart.com",currency:"BRL",value:37});
   });
 }
 
@@ -369,101 +460,27 @@ function loadVturbPlayer(player) {
 
 function buildCheckoutUrl() {
   const url = new URL(RAIOX_CONFIG.checkoutUrl);
-  new URLSearchParams(window.location.search).forEach((value, key) => {
-    if (key !== "test_mode") url.searchParams.set(key, value);
-  });
-  url.searchParams.set("profile", state.profile || "vida_pessoal");
-  return state.testMode ? "#checkout-teste" : url.toString();
-}
+  Object.entries(RX.getAttribution()).forEach(([key, value]) => url.searchParams.set(key, value));
+  url.searchParams.set("src", RX.getAttribution().src || state.utms.src || RAIOX_CONFIG.source);
+  if(RX_CONFIG.correlateCheckout)url.searchParams.set("sck",RX.checkoutSck(url.searchParams.get("sck")));
 
-function sendLeadEvent(event, lastQuestionId = "") {
-  if (!state.submissionId || !RAIOX_CONFIG.leadWebhookUrl) return;
-  const now = new Date().toISOString();
-  const payload = {
-    event,
-    source: RAIOX_CONFIG.source,
-    quiz_variant: RAIOX_CONFIG.quizVariant,
-    spreadsheet_id: RAIOX_CONFIG.spreadsheetId,
-    sheet_name: RAIOX_CONFIG.sheetTabName,
-    sheet_gid: RAIOX_CONFIG.sheetGid,
-    timestamp: now,
-    page_url: window.location.href,
-    submission_id: state.submissionId,
-    status_resposta: state.resultViewed ? "concluída" : "em andamento",
-    ultimo_evento: event,
-    primeiro_envio_em: state.firstSentAt || now,
-    atualizado_em: now,
-    quiz_completed_at: state.quizCompletedAt || undefined,
-    result_viewed_at: state.resultViewedAt || undefined,
-    checkout_clicked_at: state.checkoutClickedAt || undefined,
-    opening_viewed_at: state.openingViewedAt,
-    capture_viewed_at: state.captureViewedAt || undefined,
-    lead_submitted_at: state.leadSubmittedAt || undefined,
-    quiz_started_at: state.quizStartedAt || undefined,
-    ultima_pergunta_respondida: lastQuestionId,
-    acessou_quiz: "sim",
-    chegou_captura: state.captureViewed ? "sim" : undefined,
-    enviou_dados: state.lead ? "sim" : undefined,
-    quiz_completo: state.resultViewed ? "sim" : undefined,
-    resultado_visto: state.resultViewed ? "sim" : undefined,
-    clicou_checkout: state.checkoutClicked ? "sim" : undefined,
-    etapa_atual: getCurrentStage(event, lastQuestionId),
-    nome: state.lead?.name,
-    email: state.lead?.email,
-    telefone: state.lead?.phone,
-    whatsapp: state.lead?.phone,
-    perfil: state.profile,
-    perfil_vsl: getVslProfile(),
-    is_test: state.testMode ? "sim" : "não",
-    "1ª Etapa - Situação mais valiosa": state.answers.profile || undefined,
-    "2ª Etapa - Seu olhar hoje": state.answers.body_reading || undefined,
-    "3ª Etapa - O que você busca": state.answers.desired_reading || undefined,
-    "4ª Etapa - Leitura do rosto": state.answers.face_reading || undefined,
-    "5ª Etapa - O erro que você evita": state.answers.consequence || undefined,
-    ...state.utms
-  };
-  Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
-  const body = JSON.stringify(payload);
-  if ((event === "checkout_clicked" || event === "abandoned") && navigator.sendBeacon) {
-    navigator.sendBeacon(RAIOX_CONFIG.leadWebhookUrl, new Blob([body], { type: "text/plain;charset=utf-8" }));
-    return;
+  const lead = getCheckoutPrefill();
+  if (lead) {
+    if (lead.name) url.searchParams.set("name", String(lead.name).trim());
+    if (lead.email) url.searchParams.set("email", String(lead.email).trim().toLowerCase());
+
+    const phone = splitBrazilPhoneForCheckout(lead.phone);
+    if (phone) {
+      url.searchParams.set("phoneac", phone.areaCode);
+      url.searchParams.set("phonenumber", phone.number);
+    }
   }
-  fetch(RAIOX_CONFIG.leadWebhookUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body }).catch(() => {});
-}
 
-function getCurrentStage(event, lastQuestionId) {
-  if (event === "quiz_view") return "1. Abertura";
-  if (event === "quiz_start") return "2. Pergunta 1";
-  if (event === "capture_view") return "7. Captura de dados";
-  if (event === "lead_submitted") return "8. Dados enviados";
-  if (event === "quiz_completed") return "9. Resultado";
-  if (event === "checkout_clicked") return "10. Checkout";
-  if (event === "abandoned") return `Abandono · ${state.screen}`;
-  const questionIndex = STEPS.findIndex((step) => step.id === lastQuestionId);
-  if (questionIndex < 0) return "Em andamento";
-  const questionNumber = STEPS.slice(0, questionIndex + 1).filter((step) => step.type === "question").length;
-  return `Pergunta ${questionNumber} de 5`;
-}
-
-function createSubmissionId() {
-  if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
-  return `raiox02-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function trackEvent(eventName, payload = {}) {
-  const data = { event: eventName, source: RAIOX_CONFIG.source, quiz_variant: RAIOX_CONFIG.quizVariant, ...payload };
-  if (window.dataLayer) window.dataLayer.push(data);
-  if (!state.testMode && typeof window.fbq === "function") window.fbq("trackCustom", eventName, data);
+  return url.toString();
 }
 
 function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-window.addEventListener("pagehide", () => {
-  if (!state.resultViewed && !state.checkoutClicked) sendLeadEvent("abandoned");
-});
-
-trackEvent("raiox02_view");
-sendLeadEvent("quiz_view");
 render();

@@ -1,4 +1,4 @@
-@import url("/mentoria/mentoria.css?v=4");
+@import url("./base.css?v=4");
 
 .raiox-hero-visual {
   position: relative;
@@ -160,16 +160,44 @@
   margin: 0;
 }
 
+#start-button {
+  animation: raiox-start-pulse 1.55s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, box-shadow;
+}
+
+@keyframes raiox-start-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(25, 58, 94, 0);
+  }
+  50% {
+    transform: scale(1.025);
+    box-shadow: 0 0 0 9px rgba(25, 58, 94, .10);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #start-button {
+    animation: none;
+  }
+}
+
 .result-fixed-cta {
   display: none;
 }
 
 .result-fixed-cta.visible {
   display: grid;
+  gap: 10px;
 }
 
 .panel-inner:has(.fixed-cta) {
   padding-bottom: 110px;
+}
+
+.panel-inner:has(.result-fixed-cta) {
+  padding-bottom: 250px;
 }
 
 .insight-card {
@@ -245,4 +273,94 @@
   .opening-list li { font-size: 12px; }
   .result-simple > h1 { font-size: 25px; }
   .insight-card { padding: 18px; }
+}
+
+#checkout-button {
+  background: #16a34a;
+  color: #fff;
+  box-shadow: 0 16px 32px rgba(22, 163, 74, .25);
+}
+
+#checkout-button:hover {
+  background: #15803d;
+}
+
+
+.lot-grid {
+  display: grid;
+  width: min(100%, 590px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 auto;
+  max-width: 590px;
+}
+
+.lot-card {
+  min-height: 138px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  border: 1px solid #d5dfeb;
+  border-radius: 16px;
+  padding: 16px 12px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.lot-card-current {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  box-shadow: 0 10px 24px rgba(22, 163, 74, .12);
+}
+
+.lot-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.lot-card strong {
+  color: var(--navy);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.lot-card small {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lot-card-current small {
+  background: #dc2626;
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .lot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .lot-card {
+    min-height: 116px;
+    padding: 12px 7px;
+    border-radius: 13px;
+  }
+
+  .lot-card strong {
+    font-size: 22px;
+  }
+
+  .lot-label,
+  .lot-card small {
+    font-size: 10px;
+  }
 }
