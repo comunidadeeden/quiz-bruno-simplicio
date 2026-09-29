@@ -2,7 +2,7 @@ const RAIOX_CONFIG = {
   checkoutUrl: "https://pay.hotmart.com/P106544757H",
   leadWebhookUrl: window.RX_CONFIG.webhookUrl,
   source: "quiz_raiox01",
-  workshopDateText: "29 e 30 de Setembro, às 20h · ao vivo",
+  workshopDateText: "6 e 7 de Outubro, às 20h · ao vivo",
   priceText: "R$37",
   ctaDelaySeconds: 60
 };
