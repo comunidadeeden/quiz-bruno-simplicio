@@ -1245,3 +1245,10 @@ button,
   }
 }
 
+/* H1 da abertura usa a mesma família tipográfica do H2 e texto de apoio. */
+.screen:has(.raiox-hero-visual) .opening-title {
+  font-family: var(--sans);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
