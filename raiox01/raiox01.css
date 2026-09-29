@@ -160,6 +160,29 @@
   margin: 0;
 }
 
+#start-button {
+  animation: raiox-start-pulse 1.55s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, box-shadow;
+}
+
+@keyframes raiox-start-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(25, 58, 94, 0);
+  }
+  50% {
+    transform: scale(1.025);
+    box-shadow: 0 0 0 9px rgba(25, 58, 94, .10);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #start-button {
+    animation: none;
+  }
+}
+
 .result-fixed-cta {
   display: none;
 }
