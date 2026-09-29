@@ -3,7 +3,7 @@
   'use strict';
   // RX4: mantém a API RX do site salvo; troca somente o contrato/transporte.
   const oldConfig=w.RX_CONFIG||{};
-  const cfg=w.RX_CONFIG={...oldConfig,version:'raiox-direct-v4.3',pageBuild:'rx4.3-privacy-footer-meta-base-20260929',
+  const cfg=w.RX_CONFIG={...oldConfig,version:'raiox-direct-v4.4',pageBuild:'rx4.4-vk-always-on-20260929',
     webhookUrl:'https://nklqcamhkwqictdmictb.supabase.co/functions/v1/raiox01-collect',
     source:'quiz_raiox01',launch:'raiox01_2026_09',resumeSession:oldConfig.resumeSession!==false,
     testMode:oldConfig.testMode===true||new URLSearchParams(w.location.search).get('rx_test')==='1',
@@ -251,7 +251,7 @@
     }
     f('consent',consent.advertising?'grant':'revoke');
   }
-  function loadVk(){if(cfg.testMode||!consent.advertising||!cfg.enableVkAfterConsent||w.__rxVk)return;w.__rxVk=true;const c='dOP0AtWY0KNPoS4XBYdj';(w.vkPixelSales=w.vkPixelSales||{_q:[]})._q.push(['init',c]);(w.vkPageViewPixel=w.vkPageViewPixel||{_q:[]})._q.push(['init',c,'page_view']);['https://cf.vkdigital.com.br/sales_pixel_beacon.js?v=56','https://cf.vkdigital.com.br/event_pageview.js'].forEach((src,i)=>{const s=d.createElement('script');s.src=src;s.async=true;if(!i)['data-no-xcod-url','data-sticky-paid-source','data-global-tracking-cache'].forEach(k=>s.setAttribute(k,''));d.head.appendChild(s);});}
+  function loadVk(){if(cfg.testMode||w.__rxVk)return;w.__rxVk=true;const c='dOP0AtWY0KNPoS4XBYdj';(w.vkPixelSales=w.vkPixelSales||{_q:[]})._q.push(['init',c]);(w.vkPageViewPixel=w.vkPageViewPixel||{_q:[]})._q.push(['init',c,'page_view']);['https://cf.vkdigital.com.br/sales_pixel_beacon.js?v=56','https://cf.vkdigital.com.br/event_pageview.js'].forEach((src,i)=>{const s=d.createElement('script');s.src=src;s.async=true;if(!i)['data-no-xcod-url','data-sticky-paid-source','data-global-tracking-cache'].forEach(k=>s.setAttribute(k,''));d.head.appendChild(s);});}
   function choose(analytics,advertising){
     consent={...consent,analytics:analytics===true,advertising:advertising===true,decided:true};
     try{localStorage.setItem('rx01_consent_v1',JSON.stringify({version:cfg.consentVersion,saved_at:Date.now(),choices:consent}));}catch(_){}
