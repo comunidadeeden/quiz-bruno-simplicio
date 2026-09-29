@@ -1168,3 +1168,39 @@ button,
   }
 }
 
+/* Ajuste final da PRIMEIRA TELA — menor e proporcional. */
+.screen:has(.raiox-hero-visual) .opening-title {
+  max-width: 660px;
+  font-size: clamp(24px, 4.4vw, 34px);
+  line-height: 1.06;
+}
+
+.screen:has(.raiox-hero-visual) .opening-subtitle {
+  max-width: 620px;
+  font-size: clamp(11px, 1.8vw, 14px);
+  line-height: 1.2;
+}
+
+@media (max-width: 600px) {
+  .screen:has(.raiox-hero-visual) .opening-title {
+    font-size: 18px;
+    line-height: 1.08;
+  }
+
+  .screen:has(.raiox-hero-visual) .opening-subtitle {
+    font-size: 10px;
+    line-height: 1.18;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .screen:has(.raiox-hero-visual) .opening-title {
+    font-size: 17px;
+  }
+
+  .screen:has(.raiox-hero-visual) .opening-subtitle {
+    font-size: 9px;
+  }
+}
+
