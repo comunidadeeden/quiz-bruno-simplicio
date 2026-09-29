@@ -1,13 +1,1 @@
-/* Adição funcional; mantém as cores e o layout da página original. */
-.rx-honey{position:absolute!important;left:-9999px!important;width:1px;height:1px;overflow:hidden;}
-.rx-contact-consent{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.5;color:#334155;text-align:left;}
-.rx-contact-consent input{margin-top:4px;min-width:16px;}
-#rx-consent{position:fixed;z-index:10010;left:12px;bottom:12px;width:min(460px,calc(100% - 24px));box-sizing:border-box;padding:20px;border:1px solid #cbd5e1;border-radius:14px;background:#fff;box-shadow:0 8px 40px #0003;font:14px/1.5 Inter,sans-serif;color:#17365d;max-height:85vh;overflow:auto;}
-#rx-consent p{font-size:13px;margin:8px 0;}
-#rx-consent label{display:block;margin:8px 0;}
-#rx-consent input{margin-right:8px;}
-#rx-consent div{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
-#rx-consent button{padding:9px 11px;border:1px solid #17365d;border-radius:8px;background:#fff;color:#17365d;font-size:12px;}
-#rx-consent-save{font-weight:800;}
-.rx-privacy-settings{position:fixed;right:10px;top:10px;z-index:10000;font-size:10px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#17365d;}
-.rx-test-banner{background:#fff4ce;color:#614900;text-align:center;font:11px/1.4 sans-serif;padding:5px 60px 5px 8px;}
+The requested file reference is not currently visible. Use files.search or files.list to rediscover the file, then retry with a returned ref_id or file_id.
