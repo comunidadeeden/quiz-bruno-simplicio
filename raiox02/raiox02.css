@@ -1170,8 +1170,8 @@ button,
 
 /* Ajuste final da PRIMEIRA TELA — menor e proporcional. */
 .screen:has(.raiox-hero-visual) .opening-title {
-  max-width: 660px;
-  font-size: clamp(24px, 4.4vw, 34px);
+  max-width: 680px;
+  font-size: clamp(26px, 4.7vw, 36px);
   line-height: 1.06;
 }
 
@@ -1183,7 +1183,7 @@ button,
 
 @media (max-width: 600px) {
   .screen:has(.raiox-hero-visual) .opening-title {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.08;
   }
 
@@ -1196,7 +1196,7 @@ button,
 
 @media (max-width: 380px) {
   .screen:has(.raiox-hero-visual) .opening-title {
-    font-size: 17px;
+    font-size: 18px;
   }
 
   .screen:has(.raiox-hero-visual) .opening-subtitle {
