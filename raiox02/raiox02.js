@@ -281,7 +281,7 @@ function renderOpening() {
       <span class="opening-line">APENAS OLHANDO O ROSTO E O</span>
       <span class="opening-line">CORPO EM 5 SEGUNDOS!</span>
     </h1>
-    <h2 class="opening-subtitle">EM APENAS 2 NOITES AO VIVO</h2>
+    <h2 class="opening-subtitle">EM APENAS 2 NOITES AO VIVO COM MATERIAL DE APOIO NA PRÁTICA</h2>
     <figure class="raiox-hero-visual">
       <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
