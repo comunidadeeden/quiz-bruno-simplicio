@@ -1204,3 +1204,33 @@ button,
   }
 }
 
+/* Nova hierarquia da primeira tela: H1 + H2 + apoio menor. */
+.opening-secondary-title {
+  max-width: 640px;
+  margin: 8px auto 0;
+  color: var(--navy);
+  font-family: var(--serif);
+  font-size: clamp(20px, 3.4vw, 28px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.screen:has(.raiox-hero-visual) .opening-subtitle {
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .screen:has(.raiox-hero-visual) .opening-secondary-title {
+    font-size: 15px;
+    line-height: 1.1;
+  }
+}
+
+@media (max-width: 380px) {
+  .screen:has(.raiox-hero-visual) .opening-secondary-title {
+    font-size: 14px;
+  }
+}
+
