@@ -900,9 +900,13 @@ vturb-smartplayer {
   }
 }
 
+/* =========================================================
+   TIPOGRAFIA FINAL — MODELO VISUAL DA REFERÊNCIA APROVADA
+   Heading serifado / texto de apoio sans / ouro + navy.
+   Este bloco fica por último para impedir sobrescritas antigas.
+   ========================================================= */
 
-/* Tipografia unificada do RaioX02.
-   Títulos seguem o modelo editorial serifado; leitura e controles usam a fonte limpa de apoio. */
+/* Texto funcional e leitura */
 body,
 p,
 li,
@@ -922,81 +926,245 @@ button,
   font-family: var(--sans);
 }
 
-h1,
-h2,
-h3,
+/* Títulos editoriais — mesmo estilo do "O corpo não mostra apenas aparência." */
 .opening-title,
-.opening-subtitle,
 .question-title,
 .insight-title,
 .result-simple > h1,
 .loading h2,
 .workshop-date-card strong,
 .date-card strong,
-.workshop-content h3 {
+.workshop-content h3,
+.screen > .panel-inner > h2:not(.opening-subtitle) {
+  color: var(--ink);
   font-family: var(--serif);
-  letter-spacing: -0.02em;
-}
-
-.opening-title {
   font-weight: 700;
   letter-spacing: -0.025em;
+  text-align: center;
+}
+
+/* Etiquetas douradas no estilo PONTO DE OBSERVAÇÃO */
+.eyebrow,
+.question-number {
+  color: var(--gold);
+  font-family: var(--sans);
+  font-weight: 900;
+  letter-spacing: .15em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+/* Abertura */
+.opening-title {
+  max-width: 700px;
+  font-size: clamp(31px, 5.2vw, 43px);
+  line-height: 1.05;
 }
 
 .opening-subtitle {
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  max-width: 660px;
+  color: var(--navy);
+  font-family: var(--sans);
+  font-size: clamp(13px, 2vw, 17px);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: .02em;
+  text-align: center;
 }
 
+/* Perguntas */
 .question-title {
-  font-weight: 700;
-  line-height: 1.12;
+  max-width: 620px;
+  margin-right: auto;
+  margin-left: auto;
+  font-size: clamp(30px, 5vw, 40px);
+  line-height: 1.08;
 }
 
 .option {
-  font-weight: 700;
+  color: #566174;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
-.insight-body,
+/* Ponto de observação */
+.insight-title {
+  max-width: 620px;
+  font-size: clamp(32px, 5.4vw, 43px);
+  line-height: 1.06;
+}
+
+.insight-body {
+  color: #657084;
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.62;
+}
+
+.insight-list li {
+  color: #657084;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.48;
+}
+
+.insight-footer {
+  color: var(--navy);
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.insight-footer strong {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+/* Resultado e carregamento */
+.result-simple > h1,
+.loading h2 {
+  max-width: 620px;
+  margin-right: auto;
+  margin-left: auto;
+  font-size: clamp(30px, 5vw, 40px);
+  line-height: 1.08;
+}
+
 .result-copy p,
 .workshop-content p,
-.opening-list li {
-  color: #657084;
+.date-card,
+.workshop-date-card {
+  font-family: var(--sans);
 }
 
-.button,
-.field label,
-.question-number,
-.eyebrow,
-.result-badge,
-.lot-label {
-  letter-spacing: .02em;
+/* Formulário e controles */
+.field label {
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 800;
 }
 
+.field input {
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.button {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+/* MOBILE — proporções da referência enviada */
 @media (max-width: 600px) {
+  .eyebrow,
+  .question-number {
+    font-size: 10px;
+    letter-spacing: .13em;
+  }
+
   .opening-title {
-    font-size: clamp(20px, 6.3vw, 24px);
-    line-height: 1.08;
+    max-width: 100%;
+    font-size: clamp(21px, 6.25vw, 25px);
+    line-height: 1.07;
+    letter-spacing: -0.025em;
   }
 
   .opening-subtitle {
-    font-size: clamp(10px, 3.15vw, 12px);
-    line-height: 1.2;
+    max-width: 100%;
+    font-size: clamp(9px, 2.9vw, 11px);
+    line-height: 1.22;
+    letter-spacing: .01em;
   }
 
   .question-title {
-    font-size: clamp(24px, 7vw, 30px);
-    line-height: 1.08;
+    max-width: 100%;
+    margin-bottom: 18px;
+    font-size: clamp(27px, 7.5vw, 32px);
+    line-height: 1.07;
   }
 
-  .result-simple > h1 {
-    font-size: clamp(24px, 7vw, 30px);
-    line-height: 1.1;
+  .option {
+    font-size: 14px;
+    line-height: 1.4;
   }
 
+  .screen .insight-title {
+    max-width: 100%;
+    margin-bottom: 18px;
+    font-size: clamp(28px, 7.8vw, 33px);
+    line-height: 1.05;
+  }
+
+  .insight-body {
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .insight-list li {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .insight-footer {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  .result-simple > h1,
   .loading h2 {
-    font-size: clamp(24px, 7vw, 30px);
-    line-height: 1.1;
+    max-width: 100%;
+    font-size: clamp(27px, 7.5vw, 32px);
+    line-height: 1.07;
+  }
+
+  .field label {
+    font-size: 12px;
+  }
+
+  .button {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 380px) {
+  .opening-title {
+    font-size: 20px;
+  }
+
+  .opening-subtitle {
+    font-size: 9px;
+  }
+
+  .question-title,
+  .screen .insight-title,
+  .result-simple > h1,
+  .loading h2 {
+    font-size: 26px;
+  }
+
+  .option {
+    font-size: 13px;
+  }
+
+  .insight-body {
+    font-size: 15px;
+  }
+
+  .insight-list li {
+    font-size: 14px;
+  }
+
+  .insight-footer {
+    font-size: 15px;
   }
 }
 
