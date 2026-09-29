@@ -370,24 +370,26 @@ function renderResult() {
         </vturb-smartplayer>
       </div>
       <div class="workshop-date-card"><span>Workshop Raio-X Humano</span><strong>${RAIOX_CONFIG.workshopDateText}</strong></div>
-      <div class="lot-grid" aria-label="Lotes do Workshop Raio-X Humano">
-        <div class="lot-card lot-card-current">
-          <span class="lot-label">1º lote</span>
-          <strong>R$37</strong>
-          <small>Encerra em breve</small>
+      <div class="fixed-cta result-fixed-cta" id="checkout-cta">
+        <div class="lot-grid" aria-label="Lotes do Workshop Raio-X Humano">
+          <div class="lot-card lot-card-current">
+            <span class="lot-label">1º lote</span>
+            <strong>R$37</strong>
+            <small>Encerra em breve</small>
+          </div>
+          <div class="lot-card">
+            <span class="lot-label">2º lote</span>
+            <strong>R$79</strong>
+            <small>Em breve</small>
+          </div>
+          <div class="lot-card">
+            <span class="lot-label">3º lote</span>
+            <strong>R$147</strong>
+            <small>Em breve</small>
+          </div>
         </div>
-        <div class="lot-card">
-          <span class="lot-label">2º lote</span>
-          <strong>R$79</strong>
-          <small>Em breve</small>
-        </div>
-        <div class="lot-card">
-          <span class="lot-label">3º lote</span>
-          <strong>R$147</strong>
-          <small>Em breve</small>
-        </div>
+        <a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a>
       </div>
-      <div class="fixed-cta result-fixed-cta" id="checkout-cta"><a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a></div>
     </div>
   `);
   RX.bindVturb(document.getElementById(player.id));
