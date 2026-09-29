@@ -5,7 +5,7 @@ const RAIOX_CONFIG = {
   sheetTabName: "Respostas do aquecimento",
   spreadsheetId: "18N9QfsXG5mGdG05n4uLqBe4kQWP1gIjS_5GQGQ3tSlM",
   sheetGid: "1513396897",
-  workshopDateText: "29 e 30 de Setembro, às 20h · ao vivo"
+  workshopDateText: "6 e 7 de Outubro, às 20h · ao vivo"
 
 };
 
