@@ -256,3 +256,81 @@
 #checkout-button:hover {
   background: #15803d;
 }
+
+
+.lot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px auto 24px;
+  max-width: 590px;
+}
+
+.lot-card {
+  min-height: 138px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  border: 1px solid #d5dfeb;
+  border-radius: 16px;
+  padding: 16px 12px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.lot-card-current {
+  border-color: #16a34a;
+  background: #f0fdf4;
+  box-shadow: 0 10px 24px rgba(22, 163, 74, .12);
+}
+
+.lot-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.lot-card strong {
+  color: var(--navy);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.lot-card small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lot-card-current small {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #16a34a;
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .lot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .lot-card {
+    min-height: 116px;
+    padding: 12px 7px;
+    border-radius: 13px;
+  }
+
+  .lot-card strong {
+    font-size: 22px;
+  }
+
+  .lot-label,
+  .lot-card small {
+    font-size: 10px;
+  }
+}
