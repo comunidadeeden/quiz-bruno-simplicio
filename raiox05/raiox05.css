@@ -1,0 +1,248 @@
+@import url("/mentoria/mentoria.css?v=4");
+
+.raiox-hero-visual {
+  position: relative;
+  width: min(100%, 440px);
+  aspect-ratio: 16 / 9;
+  margin: 12px auto 14px;
+  overflow: hidden;
+  border: 1px solid rgba(207, 226, 242, .9);
+  border-radius: 16px;
+  background: #eef6fc;
+  box-shadow: 0 12px 24px rgba(43, 98, 140, .09);
+}
+
+.opening-title {
+  max-width: 640px;
+  margin: 8px auto 0;
+  padding: 0 6px;
+  font-size: clamp(22px, 5vw, 31px);
+  line-height: 1.18;
+}
+
+.raiox-hero-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: .96;
+}
+
+.raiox-scan-line {
+  position: absolute;
+  z-index: 1;
+  top: 4%;
+  right: 2.5%;
+  left: 2.5%;
+  height: 2px;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, #39a9ff 12%, #bcecff 50%, #39a9ff 88%, transparent);
+  box-shadow: 0 0 8px rgba(57, 169, 255, .85), 0 0 20px rgba(57, 169, 255, .48);
+  animation: raiox-image-scan 5.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes raiox-image-scan {
+  0%, 8% { top: 4%; opacity: 0; }
+  14% { opacity: .88; }
+  78% { top: 94%; opacity: .88; }
+  86%, 100% { top: 94%; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .raiox-scan-line { animation: none; opacity: 0; }
+}
+
+.opening-list,
+.result-copy,
+.workshop-content {
+  max-width: 590px;
+  margin: 0 auto;
+}
+
+.opening-list {
+  margin: 22px auto 26px;
+  padding: 0;
+  list-style: none;
+}
+
+.opening-list li {
+  position: relative;
+  margin: 0 0 10px;
+  padding-left: 22px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.opening-list li::before {
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+  content: "•";
+  font-size: 20px;
+  line-height: 1;
+}
+
+.opening-benefits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 14px auto;
+  text-align: left;
+}
+
+.opening-benefits li {
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.opening-benefits li::before {
+  content: "✓";
+  color: var(--gold);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.opening-invitation {
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.opening-promise {
+  margin-top: 0;
+  padding: 0 4px;
+  color: #233c59;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.screen:has(.raiox-hero-visual) {
+  border-color: #d3e6f4;
+  background: #eef6fc;
+}
+
+.app-shell:has(.raiox-hero-visual) {
+  padding-top: 8px;
+}
+
+.app-shell:has(.raiox-hero-visual) .topbar {
+  display: none;
+}
+
+/* Fixed CTAs must use the browser viewport, not the animated card. */
+.screen:has(.fixed-cta) {
+  animation: none;
+  transform: none;
+}
+
+.fixed-cta {
+  position: fixed;
+  z-index: 9999;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(204, 225, 241, .95);
+  background: rgba(238, 246, 252, .96);
+  box-shadow: 0 -10px 28px rgba(43, 98, 140, .12);
+  backdrop-filter: blur(10px);
+}
+
+.fixed-cta .button {
+  width: min(100%, 590px);
+  margin: 0;
+}
+
+.result-fixed-cta {
+  display: none;
+}
+
+.result-fixed-cta.visible {
+  display: grid;
+}
+
+.panel-inner:has(.fixed-cta) {
+  padding-bottom: 110px;
+}
+
+.insight-card {
+  border: 1px solid #d8e3ed;
+  border-radius: 16px;
+  padding: 22px;
+  background: linear-gradient(145deg, #f8fbfe, #fff);
+}
+
+.insight-card p,
+.result-copy p,
+.workshop-content p { text-align: left; }
+
+.insight-card strong { color: var(--navy); }
+
+.result-badge {
+  background: var(--navy-soft);
+  color: var(--navy);
+}
+
+.result-copy {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.workshop-content {
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.workshop-content h3 { font-size: clamp(21px, 4.8vw, 27px); }
+
+.workshop-content h4 {
+  margin: 21px 0 8px;
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.date-card {
+  display: grid;
+  gap: 4px;
+  margin: 24px 0 16px;
+  border: 1px solid #d5dfeb;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f7faff;
+  text-align: center;
+}
+
+.date-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.date-card strong { color: var(--navy); font-size: 18px; }
+.result-simple .fine-print { max-width: 520px; }
+
+.result-simple > h1 {
+  max-width: 590px;
+  font-size: clamp(24px, 4.6vw, 34px);
+  line-height: 1.16;
+}
+
+@media (max-width: 520px) {
+  .panel-inner { padding: 20px 18px; }
+  .opening-title { font-size: 22px; }
+  .raiox-hero-visual { width: 100%; }
+  .opening-list li { font-size: 12px; }
+  .result-simple > h1 { font-size: 25px; }
+  .insight-card { padding: 18px; }
+}

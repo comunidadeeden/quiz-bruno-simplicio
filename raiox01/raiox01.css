@@ -1,4 +1,199 @@
-@import url("/mentoria/mentoria.css?v=4");
+:root {
+  --navy: #163a5b;
+  --navy-deep: #102c47;
+  --navy-soft: #e8f2fb;
+  --sky: #edf7ff;
+  --text: #19324a;
+  --muted: #5c7286;
+  --line: #d6e5f1;
+  --gold: #d39b3c;
+  --white: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html { background: #eff7fc; }
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--text);
+  background: linear-gradient(180deg, #f7fbff 0%, #edf7fd 100%);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+
+.app-shell {
+  width: min(100%, 820px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px 18px 42px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 auto 14px;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--navy);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: var(--navy);
+  font-size: 12px;
+}
+
+.progress-label { font-weight: 700; }
+
+.screen {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 20px 55px rgba(30, 76, 111, .10);
+}
+
+.panel-inner {
+  width: min(100%, 680px);
+  margin: 0 auto;
+  padding: 34px;
+  text-align: center;
+}
+
+.eyebrow,
+.question-number {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  padding: 5px 11px;
+  color: var(--navy);
+  background: var(--navy-soft);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+h1, h2, h3, h4, p { margin-top: 0; }
+h1, h2, h3, h4 {
+  color: var(--navy-deep);
+  font-family: "Libre Baskerville", Georgia, serif;
+  letter-spacing: -.025em;
+}
+h1 { margin-bottom: 16px; font-size: clamp(28px, 5vw, 42px); line-height: 1.17; }
+h2 { margin-bottom: 18px; font-size: clamp(25px, 4.5vw, 34px); line-height: 1.2; }
+p { margin-bottom: 16px; }
+.lead { color: var(--muted); font-size: 16px; }
+
+.button {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 13px;
+  padding: 14px 22px;
+  color: #fff;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.button-primary {
+  background: linear-gradient(135deg, #1d5885, #143b5d);
+  box-shadow: 0 10px 23px rgba(20, 59, 93, .28);
+}
+.button-primary:hover,
+.button-primary:focus-visible {
+  background: linear-gradient(135deg, #256a9c, #163f62);
+  box-shadow: 0 14px 28px rgba(20, 59, 93, .34);
+  transform: translateY(-1px);
+}
+.button:focus-visible, .option:focus-visible, input:focus-visible { outline: 3px solid rgba(50, 144, 210, .38); outline-offset: 3px; }
+
+.form { display: grid; gap: 14px; margin: 24px auto 0; text-align: left; }
+.field { display: grid; gap: 6px; }
+.field label { color: var(--navy); font-size: 13px; font-weight: 800; }
+.field input {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid #cbddeb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  background: #fff;
+}
+.field input::placeholder { color: #92a6b6; }
+.error { min-height: 20px; color: #b42318; font-size: 13px; font-weight: 700; }
+.fine-print { margin: 18px auto 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  margin: 0 0 24px;
+  border-radius: 999px;
+  background: #e4eef6;
+}
+.progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2d8dcc, #175078); transition: width .25s ease; }
+.question-title { max-width: 620px; margin-right: auto; margin-left: auto; }
+.options { display: grid; gap: 11px; margin-top: 25px; }
+.option {
+  width: 100%;
+  border: 1px solid #d5e3ee;
+  border-radius: 14px;
+  padding: 16px 17px;
+  color: var(--text);
+  background: #fff;
+  font-weight: 650;
+  line-height: 1.4;
+  text-align: left;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.option:hover { border-color: #8fbedd; background: #f5faff; transform: translateY(-1px); }
+.option.selected { border-color: #1d7ebd; color: #fff; background: #1d638f; }
+.option:disabled { cursor: default; }
+
+.loading { display: grid; justify-items: center; padding: 52px 0; }
+.loading-ring { width: 46px; height: 46px; margin-bottom: 20px; border: 4px solid #d9eaf5; border-top-color: #267db5; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result-simple { text-align: center; }
+.result-badge { display: inline-block; margin-bottom: 16px; border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 800; }
+.video-frame { margin: 24px auto; overflow: hidden; border-radius: 16px; background: #071b2b; box-shadow: 0 14px 30px rgba(13, 45, 68, .18); }
+.workshop-date-card { display: grid; gap: 4px; max-width: 400px; margin: 20px auto; border: 1px solid #d6e5f1; border-radius: 15px; padding: 16px; background: #f7fbff; }
+.workshop-date-card span { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.workshop-date-card strong { color: var(--navy); font-size: 17px; }
+.workshop-date-card small { color: var(--muted); }
+.footer-brand { margin-top: 20px; color: #7890a3; font-size: 12px; font-weight: 700; text-align: center; }
 
 .raiox-hero-visual {
   position: relative;
@@ -158,6 +353,19 @@
 .fixed-cta .button {
   width: min(100%, 590px);
   margin: 0;
+}
+
+/* O CTA de compra se diferencia dos botões de avanço do quiz. */
+.button-checkout {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  box-shadow: 0 12px 28px rgba(21, 128, 61, .32);
+}
+
+.button-checkout:hover,
+.button-checkout:focus-visible {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 16px 34px rgba(21, 128, 61, .40);
+  transform: translateY(-1px);
 }
 
 .result-fixed-cta {

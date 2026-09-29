@@ -1,12 +1,10 @@
 const RAIOX_CONFIG = {
   checkoutUrl: "https://pay.hotmart.com/P106544757H",
-  leadWebhookUrl: "https://script.google.com/macros/s/AKfycbzMnhiv75uwpqeYf47e90VGYROuA9ljI2CQxFpbC4dA2Uup5IhJH7Bv--_jS0k3EDoU/exec",
-  source: "quiz_raiox03",
-  quizVariant: "raiox03",
-  storageKey: "raiox03_lead",
-  sheetTabName: "Leads Raio X 03",
-  spreadsheetId: "19LY4IP1tnxramNULXbUOhz4MGYWhayPevNP3NCmRFBs",
-  sheetGid: "338720726",
+  leadWebhookUrl: "https://script.google.com/macros/s/AKfycbwfB9L59W9e07FwjmaS7TLOzJrec4VOv0O4taqWIttCg3M6i9QUzS6gfX2nWt0povht/exec",
+  source: "quiz_raiox05",
+  sheetTabName: "Leads Raio X 01",
+  spreadsheetId: "1OBr2lZO_AyVS30f2_KD0qwLtrBxyY-8owmbVCq50KK4",
+  sheetGid: "521598952",
   workshopDateText: "29 e 30 de Setembro, às 20h · ao vivo",
   priceText: "R$37",
   ctaDelaySeconds: 60
@@ -157,14 +155,6 @@ function createState() {
     utms: getTrackingParams(),
     submissionId: createSubmissionId(),
     firstSentAt: startedAt,
-    openingViewedAt: startedAt,
-    quizStartedAt: "",
-    captureViewedAt: "",
-    leadSubmittedAt: "",
-    quizCompletedAt: "",
-    resultViewedAt: "",
-    checkoutClickedAt: "",
-    testMode: window.RAIOX_TEST_MODE === true || new URLSearchParams(window.location.search).get("test_mode") === "1",
     captureViewed: false,
     resultViewed: false,
     checkoutClicked: false
@@ -220,11 +210,9 @@ function handleLeadSubmit(event) {
   const error = validateLead(lead);
   if (error) return document.querySelector("#form-error").textContent = error;
   state.lead = lead;
-  localStorage.setItem(RAIOX_CONFIG.storageKey, JSON.stringify(lead));
-  state.leadSubmittedAt = new Date().toISOString();
-  state.quizStartedAt = state.leadSubmittedAt;
+  localStorage.setItem("raiox05_lead", JSON.stringify(lead));
   sendLeadEvent("lead_submitted");
-  trackEvent("raiox03_lead_submit");
+  trackEvent("raiox05_lead_submit");
   state.screen = "step";
   render();
 }
@@ -239,7 +227,7 @@ function validateLead(lead) {
 function renderOpening() {
   root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1 class="opening-title">Descubra os sinais no rosto e no corpo que podem revelar marcas emocionais e mecanismos de defesa antes da primeira palavra.</h1>
+    <h1 class="opening-title">Você acredita que é possível descobrir muito sobre uma pessoa apenas observando seu rosto e o formato do seu corpo?</h1>
     <figure class="raiox-hero-visual">
       <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
@@ -256,10 +244,9 @@ function renderOpening() {
   `);
   document.querySelector("#start-button").addEventListener("click", () => {
     state.captureViewed = true;
-    state.captureViewedAt = new Date().toISOString();
     state.screen = "lead";
     sendLeadEvent("capture_view");
-    trackEvent("raiox03_start");
+    trackEvent("raiox05_start");
     render();
   });
 }
@@ -291,7 +278,7 @@ function renderInsight(step, progress) {
     </div>
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
-  document.querySelector("#continue-button").addEventListener("click", () => { state.stepIndex += 1; trackEvent("raiox03_insight_continue", { insight: step.id }); render(); });
+  document.querySelector("#continue-button").addEventListener("click", () => { state.stepIndex += 1; trackEvent("raiox05_insight_continue", { insight: step.id }); render(); });
 }
 
 function answerStep(step, optionIndex, button) {
@@ -301,7 +288,7 @@ function answerStep(step, optionIndex, button) {
   if (option.profile) state.profile = option.profile;
   state.answers[step.id] = option.label;
   sendLeadEvent("partial", step.id);
-  trackEvent("raiox03_answer", { question: step.id, profile: state.profile });
+  trackEvent("raiox05_answer", { question: step.id, profile: state.profile });
   window.setTimeout(() => {
     state.stepIndex += 1;
     if (state.stepIndex >= STEPS.length) {
@@ -314,13 +301,10 @@ function answerStep(step, optionIndex, button) {
 function renderLoading() {
   root.innerHTML = panel(`<div class="loading"><div class="loading-ring" aria-hidden="true"></div><h2>Organizando seu resultado...</h2><p>Estamos conectando suas respostas com o caminho mais coerente para você.</p></div>`);
   window.setTimeout(() => {
-    const completedAt = new Date().toISOString();
     state.screen = "result";
     state.resultViewed = true;
-    state.quizCompletedAt = completedAt;
-    state.resultViewedAt = completedAt;
     sendLeadEvent("quiz_completed");
-    trackEvent("raiox03_result_view", { profile: state.profile });
+    trackEvent("raiox05_result_view", { profile: state.profile });
     render();
   }, 750);
 }
@@ -343,13 +327,11 @@ function renderResult() {
     </div>
   `);
   loadVturbPlayer(player);
-  window.setTimeout(() => document.querySelector("#checkout-cta")?.classList.add("visible"), (state.testMode ? 0 : RAIOX_CONFIG.ctaDelaySeconds) * 1000);
-  document.querySelector("#checkout-button").addEventListener("click", (event) => {
-    if (state.testMode) event.preventDefault();
+  window.setTimeout(() => document.querySelector("#checkout-cta")?.classList.add("visible"), RAIOX_CONFIG.ctaDelaySeconds * 1000);
+  document.querySelector("#checkout-button").addEventListener("click", () => {
     state.checkoutClicked = true;
-    state.checkoutClickedAt = new Date().toISOString();
     sendLeadEvent("checkout_clicked");
-    trackEvent("raiox03_checkout_click", { profile: state.profile, vsl_profile: vslProfile, test_mode: state.testMode });
+    trackEvent("raiox05_checkout_click", { profile: state.profile, vsl_profile: vslProfile });
   });
 }
 
@@ -368,42 +350,36 @@ function loadVturbPlayer(player) {
 
 function buildCheckoutUrl() {
   const url = new URL(RAIOX_CONFIG.checkoutUrl);
-  new URLSearchParams(window.location.search).forEach((value, key) => {
-    if (key !== "test_mode") url.searchParams.set(key, value);
-  });
+  Object.entries(state.utms).forEach(([key, value]) => url.searchParams.set(key, value));
+  url.searchParams.set("src", state.utms.src || RAIOX_CONFIG.source);
   url.searchParams.set("profile", state.profile || "vida_pessoal");
-  return state.testMode ? "#checkout-teste" : url.toString();
+  return url.toString();
 }
 
 function sendLeadEvent(event, lastQuestionId = "") {
   if (!state.submissionId || !RAIOX_CONFIG.leadWebhookUrl) return;
   const now = new Date().toISOString();
+  const completed = event === "quiz_completed" || event === "checkout_clicked";
   const payload = {
     event,
     source: RAIOX_CONFIG.source,
-    quiz_variant: RAIOX_CONFIG.quizVariant,
     spreadsheet_id: RAIOX_CONFIG.spreadsheetId,
     sheet_name: RAIOX_CONFIG.sheetTabName,
     sheet_gid: RAIOX_CONFIG.sheetGid,
     timestamp: now,
     page_url: window.location.href,
     submission_id: state.submissionId,
-    status_resposta: state.resultViewed ? "concluída" : "em andamento",
+    status_resposta: completed ? "concluída" : "em andamento",
     ultimo_evento: event,
     primeiro_envio_em: state.firstSentAt || now,
     atualizado_em: now,
-    quiz_completed_at: state.quizCompletedAt || undefined,
-    result_viewed_at: state.resultViewedAt || undefined,
-    checkout_clicked_at: state.checkoutClickedAt || undefined,
-    opening_viewed_at: state.openingViewedAt,
-    capture_viewed_at: state.captureViewedAt || undefined,
-    lead_submitted_at: state.leadSubmittedAt || undefined,
-    quiz_started_at: state.quizStartedAt || undefined,
+    concluido_em: completed ? now : "",
+    checkout_clicked_at: event === "checkout_clicked" ? now : "",
     ultima_pergunta_respondida: lastQuestionId,
     acessou_quiz: "sim",
     chegou_captura: state.captureViewed ? "sim" : undefined,
     enviou_dados: state.lead ? "sim" : undefined,
-    quiz_completo: state.resultViewed ? "sim" : undefined,
+    quiz_completo: completed ? "sim" : undefined,
     resultado_visto: state.resultViewed ? "sim" : undefined,
     clicou_checkout: state.checkoutClicked ? "sim" : undefined,
     etapa_atual: getCurrentStage(event, lastQuestionId),
@@ -413,7 +389,6 @@ function sendLeadEvent(event, lastQuestionId = "") {
     whatsapp: state.lead?.phone,
     perfil: state.profile,
     perfil_vsl: getVslProfile(),
-    is_test: state.testMode ? "sim" : "não",
     "1ª Etapa - Situação mais valiosa": state.answers.profile || undefined,
     "2ª Etapa - Seu olhar hoje": state.answers.body_reading || undefined,
     "3ª Etapa - O que você busca": state.answers.desired_reading || undefined,
@@ -423,7 +398,7 @@ function sendLeadEvent(event, lastQuestionId = "") {
   };
   Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
   const body = JSON.stringify(payload);
-  if ((event === "checkout_clicked" || event === "abandoned") && navigator.sendBeacon) {
+  if (event === "checkout_clicked" && navigator.sendBeacon) {
     navigator.sendBeacon(RAIOX_CONFIG.leadWebhookUrl, new Blob([body], { type: "text/plain;charset=utf-8" }));
     return;
   }
@@ -436,7 +411,6 @@ function getCurrentStage(event, lastQuestionId) {
   if (event === "lead_submitted") return "3. Pergunta 1";
   if (event === "quiz_completed") return "9. Resultado";
   if (event === "checkout_clicked") return "10. Checkout";
-  if (event === "abandoned") return `Abandono · ${state.screen}`;
   const questionIndex = STEPS.findIndex((step) => step.id === lastQuestionId);
   if (questionIndex < 0) return "Em andamento";
   const questionNumber = STEPS.slice(0, questionIndex + 1).filter((step) => step.type === "question").length;
@@ -445,23 +419,19 @@ function getCurrentStage(event, lastQuestionId) {
 
 function createSubmissionId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
-  return `raiox03-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `raiox05-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function trackEvent(eventName, payload = {}) {
-  const data = { event: eventName, source: RAIOX_CONFIG.source, quiz_variant: RAIOX_CONFIG.quizVariant, ...payload };
+  const data = { event: eventName, source: RAIOX_CONFIG.source, ...payload };
   if (window.dataLayer) window.dataLayer.push(data);
-  if (!state.testMode && typeof window.fbq === "function") window.fbq("trackCustom", eventName, data);
+  if (typeof window.fbq === "function") window.fbq("trackCustom", eventName, data);
 }
 
 function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-window.addEventListener("pagehide", () => {
-  if (!state.resultViewed && !state.checkoutClicked) sendLeadEvent("abandoned");
-});
-
-trackEvent("raiox03_view");
+trackEvent("raiox05_view");
 sendLeadEvent("quiz_view");
 render();

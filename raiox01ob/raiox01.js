@@ -5,7 +5,7 @@ const RAIOX_CONFIG = {
   sheetTabName: "Leads Raio X 01",
   spreadsheetId: "1OBr2lZO_AyVS30f2_KD0qwLtrBxyY-8owmbVCq50KK4",
   sheetGid: "521598952",
-  workshopDateText: "15 e 16 de Setembro, às 20h · ao vivo",
+  workshopDateText: "29 e 30 de Setembro, às 20h · ao vivo",
   priceText: "R$37",
   ctaDelaySeconds: 60
 };

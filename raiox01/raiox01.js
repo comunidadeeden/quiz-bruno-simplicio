@@ -1,11 +1,11 @@
 const RAIOX_CONFIG = {
   checkoutUrl: "https://pay.hotmart.com/P106544757H",
-  leadWebhookUrl: "https://script.google.com/macros/s/AKfycbwfB9L59W9e07FwjmaS7TLOzJrec4VOv0O4taqWIttCg3M6i9QUzS6gfX2nWt0povht/exec",
+  leadWebhookUrl: "https://primary-production-ba57.up.railway.app/webhook/raiox01-coleta-v2",
   source: "quiz_raiox01",
   sheetTabName: "Leads Raio X 01",
   spreadsheetId: "1OBr2lZO_AyVS30f2_KD0qwLtrBxyY-8owmbVCq50KK4",
   sheetGid: "521598952",
-  workshopDateText: "15 e 16 de Setembro, às 20h · ao vivo",
+  workshopDateText: "29 e 30 de Setembro, às 20h · ao vivo",
   priceText: "R$37",
   ctaDelaySeconds: 60
 };
@@ -163,7 +163,7 @@ function createState() {
 
 function getTrackingParams() {
   const params = new URLSearchParams(window.location.search);
-  return ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "gclid", "src", "sck"].reduce((data, key) => {
+  return ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "utm_adset", "utm_ad", "fbclid", "gclid", "gbraid", "wbraid", "ttclid", "src", "sck", "vk_source", "vk_ad_id", "meta_campaign_id", "meta_campaign_name", "meta_adset_id", "meta_adset_name", "meta_ad_id", "meta_ad_name", "meta_creative_id", "meta_creative_name", "meta_platform", "meta_placement", "creative_code"].reduce((data, key) => {
     if (params.has(key)) data[key] = params.get(key);
     return data;
   }, {});
@@ -229,7 +229,7 @@ function renderOpening() {
     <span class="eyebrow">Workshop Raio-X Humano</span>
     <h1 class="opening-title">Você acredita que é possível descobrir muito sobre uma pessoa apenas observando seu rosto e o formato do seu corpo?</h1>
     <figure class="raiox-hero-visual">
-      <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+      <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
     <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
@@ -240,7 +240,7 @@ function renderOpening() {
       <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
     </ul>
     <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
-    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Garantir minha vaga</button></div>
+    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer meu Teste Agora</button></div>
   `);
   document.querySelector("#start-button").addEventListener("click", () => {
     state.captureViewed = true;
@@ -323,7 +323,7 @@ function renderResult() {
         </vturb-smartplayer>
       </div>
       <div class="workshop-date-card"><span>Workshop Raio-X Humano</span><strong>${RAIOX_CONFIG.workshopDateText}</strong><small>Investimento: ${RAIOX_CONFIG.priceText}</small></div>
-      <div class="fixed-cta result-fixed-cta" id="checkout-cta"><a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Quero aprender a analisar rosto e corpo</a></div>
+      <div class="fixed-cta result-fixed-cta" id="checkout-cta"><a class="button button-primary button-checkout" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Quero aprender a analisar rosto e corpo</a></div>
     </div>
   `);
   loadVturbPlayer(player);
@@ -357,52 +357,30 @@ function buildCheckoutUrl() {
 }
 
 function sendLeadEvent(event, lastQuestionId = "") {
-  if (!state.submissionId || !RAIOX_CONFIG.leadWebhookUrl) return;
-  const now = new Date().toISOString();
-  const completed = event === "quiz_completed" || event === "checkout_clicked";
-  const payload = {
-    event,
-    source: RAIOX_CONFIG.source,
-    spreadsheet_id: RAIOX_CONFIG.spreadsheetId,
-    sheet_name: RAIOX_CONFIG.sheetTabName,
-    sheet_gid: RAIOX_CONFIG.sheetGid,
-    timestamp: now,
-    page_url: window.location.href,
-    submission_id: state.submissionId,
-    status_resposta: completed ? "concluída" : "em andamento",
-    ultimo_evento: event,
-    primeiro_envio_em: state.firstSentAt || now,
-    atualizado_em: now,
-    concluido_em: completed ? now : "",
-    checkout_clicked_at: event === "checkout_clicked" ? now : "",
-    ultima_pergunta_respondida: lastQuestionId,
-    acessou_quiz: "sim",
-    chegou_captura: state.captureViewed ? "sim" : undefined,
-    enviou_dados: state.lead ? "sim" : undefined,
-    quiz_completo: completed ? "sim" : undefined,
-    resultado_visto: state.resultViewed ? "sim" : undefined,
-    clicou_checkout: state.checkoutClicked ? "sim" : undefined,
-    etapa_atual: getCurrentStage(event, lastQuestionId),
-    nome: state.lead?.name,
-    email: state.lead?.email,
-    telefone: state.lead?.phone,
-    whatsapp: state.lead?.phone,
-    perfil: state.profile,
-    perfil_vsl: getVslProfile(),
-    "1ª Etapa - Situação mais valiosa": state.answers.profile || undefined,
-    "2ª Etapa - Seu olhar hoje": state.answers.body_reading || undefined,
-    "3ª Etapa - O que você busca": state.answers.desired_reading || undefined,
-    "4ª Etapa - Leitura do rosto": state.answers.face_reading || undefined,
-    "5ª Etapa - O erro que você evita": state.answers.consequence || undefined,
-    ...state.utms
+  if (typeof RX === "undefined") return;
+  const eventMap = {
+    quiz_view: "quiz_start",
+    capture_view: "lead_capture_view",
+    lead_submitted: "lead_submit",
+    partial: "quiz_step_complete",
+    quiz_completed: "quiz_complete",
+    checkout_clicked: "rx_checkout_click"
   };
-  Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
-  const body = JSON.stringify(payload);
-  if (event === "checkout_clicked" && navigator.sendBeacon) {
-    navigator.sendBeacon(RAIOX_CONFIG.leadWebhookUrl, new Blob([body], { type: "text/plain;charset=utf-8" }));
-    return;
-  }
-  fetch(RAIOX_CONFIG.leadWebhookUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body }).catch(() => {});
+  const completed = event === "quiz_completed" || event === "checkout_clicked";
+  const properties = {
+    source: RAIOX_CONFIG.source,
+    status: completed ? "concluido" : "em_andamento",
+    ultimo_evento: event,
+    etapa_atual: getCurrentStage(event, lastQuestionId),
+    question_id: lastQuestionId || undefined,
+    profile: state.profile || undefined,
+    result_viewed: state.resultViewed === true,
+    checkout_clicked: state.checkoutClicked === true,
+    answers: state.answers
+  };
+  Object.keys(properties).forEach((key) => properties[key] === undefined && delete properties[key]);
+  RX.update({ screen: state.screen, stepIndex: state.stepIndex, profile: state.profile, answers: state.answers });
+  RX.emit(eventMap[event] || "quiz_event", properties, event === "lead_submitted" ? state.lead : undefined);
 }
 
 function getCurrentStage(event, lastQuestionId) {
@@ -425,7 +403,6 @@ function createSubmissionId() {
 function trackEvent(eventName, payload = {}) {
   const data = { event: eventName, source: RAIOX_CONFIG.source, ...payload };
   if (window.dataLayer) window.dataLayer.push(data);
-  if (typeof window.fbq === "function") window.fbq("trackCustom", eventName, data);
 }
 
 function escapeHtml(value) {

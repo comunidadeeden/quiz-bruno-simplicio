@@ -1,1 +1,10 @@
 .vercel
+node_modules
+.DS_Store
+.env
+.env.*
+!.env.example
+/outputs/
+/Git hub pagina/
+/apps-script/.deploy-*/
+.clasprc.json

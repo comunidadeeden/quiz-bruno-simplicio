@@ -1,4 +1,27 @@
 {
+  "redirects": [
+    {
+      "source": "/raiox06/",
+      "destination": "/exercicioraiox/",
+      "permanent": true
+    },
+    {
+      "source": "/raiox06/:path*",
+      "destination": "/exercicioraiox/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "quiz.brunosimplicio.com.br"
+        }
+      ],
+      "destination": "/raiox01/",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
