@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/:page(pagina01|pagina02|pagina03|pagina04)",
+      "source": "/:page(pagina01|pagina02|pagina03|pagina04|bio)",
       "destination": "/:page/",
       "permanent": true
     },
@@ -50,7 +50,7 @@
       ]
     },
     {
-      "source": "/pagina01/fonts/(.*)",
+      "source": "/:page(pagina01|bio)/fonts/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -59,7 +59,7 @@
       ]
     },
     {
-      "source": "/:page(pagina02|pagina03|pagina04)/assets/(.*)",
+      "source": "/:page(pagina02|pagina03|pagina04|bio)/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
