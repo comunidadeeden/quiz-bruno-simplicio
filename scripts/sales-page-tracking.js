@@ -51,6 +51,8 @@
       session_id: uuid(),
       page_view_event_id: uuid(),
       checkout_event_id: null,
+      cta_view_event_ids: {},
+      cta_click_event_ids: {},
       saved_at: Date.now(),
     };
   }
@@ -59,7 +61,17 @@
     state.saved_at = Date.now();
     try { sessionStorage.setItem(stateKey, JSON.stringify(state)); } catch (_) {}
   };
+  if (!state.cta_view_event_ids || typeof state.cta_view_event_ids !== "object" || Array.isArray(state.cta_view_event_ids)) state.cta_view_event_ids = {};
+  if (!state.cta_click_event_ids || typeof state.cta_click_event_ids !== "object" || Array.isArray(state.cta_click_event_ids)) state.cta_click_event_ids = {};
   saveState();
+
+  const eventIdForCta = (bucket, ctaPosition) => {
+    const map = bucket === "view" ? state.cta_view_event_ids : state.cta_click_event_ids;
+    if (validUuid(map[ctaPosition])) return map[ctaPosition];
+    map[ctaPosition] = uuid();
+    saveState();
+    return map[ctaPosition];
+  };
 
   const allowedAttributionKeys = [
     "utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id",
@@ -207,8 +219,32 @@
     "meta_platform","meta_placement","xcod"
   ];
 
+  const checkoutLinks = () => [...document.querySelectorAll('a[href*="pay.hotmart.com"]')];
+
+  const isVisibleCta = (link) => {
+    if (!(link instanceof HTMLElement)) return false;
+    const style = getComputedStyle(link);
+    const rect = link.getBoundingClientRect();
+    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  };
+
+  const reindexVisibleCtas = () => {
+    const links = checkoutLinks();
+    links.forEach((link) => {
+      delete link.dataset.rxSalesPageCta;
+      delete link.dataset.rxSalesPageCtaTotal;
+    });
+    const visible = links.filter(isVisibleCta);
+    visible.forEach((link, index) => {
+      link.dataset.rxSalesPageCta = String(index + 1);
+      link.dataset.rxSalesPageCtaTotal = String(visible.length);
+    });
+    return visible;
+  };
+
   const prepareCheckoutLinks = () => {
-    [...document.querySelectorAll('a[href*="pay.hotmart.com"]')].forEach((link, index) => {
+    const links = [...document.querySelectorAll('a[href*="pay.hotmart.com"]')];
+    links.forEach((link) => {
       try {
         const url = new URL(link.href, location.href);
         if (url.hostname !== "pay.hotmart.com") return;
@@ -229,9 +265,51 @@
         else if (inboundSck && inboundSck.length <= 255) url.searchParams.set("sck", inboundSck);
 
         link.href = url.toString();
-        link.dataset.rxSalesPageCta = String(index + 1);
       } catch (_) {}
     });
+    return reindexVisibleCtas();
+  };
+
+  const ctaProperties = (link) => {
+    const rawIndex = Number(link.dataset.rxSalesPageCta);
+    const ctaIndex = Number.isInteger(rawIndex) && rawIndex > 0 ? rawIndex : 0;
+    const rawTotal = Number(link.dataset.rxSalesPageCtaTotal);
+    const ctaTotal = Number.isInteger(rawTotal) && rawTotal > 0 ? rawTotal : reindexVisibleCtas().length;
+    const ctaPosition = ctaIndex > 0 ? "cta_" + String(ctaIndex).padStart(2, "0") : "cta";
+    return {
+      cta_position: ctaPosition,
+      cta_index: ctaIndex,
+      cta_total: ctaTotal,
+      cta_text: (link.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
+      currency: cfg.currency,
+      value: cfg.value,
+    };
+  };
+
+  const viewedCtas = new Set();
+  const trackCtaView = (link) => {
+    const properties = ctaProperties(link);
+    if (!properties.cta_index || viewedCtas.has(properties.cta_position)) return;
+    viewedCtas.add(properties.cta_position);
+    const eventId = eventIdForCta("view", properties.cta_position);
+    pushGtm("rx_sales_page_cta_view", eventId, properties);
+    void send(payload("cta_view", eventId, properties));
+  };
+
+  let ctaObserver = null;
+  const observeVisibleCtas = () => {
+    const visible = reindexVisibleCtas();
+    if (ctaObserver) ctaObserver.disconnect();
+    if (!("IntersectionObserver" in window)) return visible;
+    ctaObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) continue;
+        trackCtaView(entry.target);
+        ctaObserver?.unobserve(entry.target);
+      }
+    }, { threshold: [0.35] });
+    visible.forEach((link) => ctaObserver.observe(link));
+    return visible;
   };
 
   const pageView = payload("page_view", state.page_view_event_id, { metric: "sales_page_view" });
@@ -239,29 +317,38 @@
   void send(pageView);
 
   prepareCheckoutLinks();
+  observeVisibleCtas();
   for (const item of loadQueue()) void send(item.payload);
 
-  document.addEventListener("click", event => {
+  document.addEventListener("click", (event) => {
     const link = event.target instanceof Element
       ? event.target.closest('a[href*="pay.hotmart.com"]')
       : null;
     if (!link) return;
 
+    if (!link.dataset.rxSalesPageCta) reindexVisibleCtas();
+    const properties = ctaProperties(link);
+    trackCtaView(link);
+
+    if (properties.cta_index) {
+      const ctaClickEventId = eventIdForCta("click", properties.cta_position);
+      pushGtm("rx_sales_page_cta_click", ctaClickEventId, properties);
+      void send(payload("cta_click", ctaClickEventId, properties));
+    }
+
     if (!validUuid(state.checkout_event_id)) {
       state.checkout_event_id = uuid();
       saveState();
     }
-
-    const properties = {
-      cta_position: link.dataset.rxSalesPageCta ? "cta_" + link.dataset.rxSalesPageCta : "cta",
-      cta_text: (link.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
-      currency: cfg.currency,
-      value: cfg.value,
-    };
-
     pushGtm("rx_checkout_click", state.checkout_event_id, properties);
     void send(payload("checkout_click", state.checkout_event_id, properties));
   }, { capture: true });
+
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => observeVisibleCtas(), 180);
+  });
 
   window.addEventListener("online", () => {
     for (const item of loadQueue()) void send(item.payload);
