@@ -133,7 +133,7 @@
     const trafficKeys={campaign_source:'utm_source',campaign_medium:'utm_medium',campaign_name:'utm_campaign',campaign_content:'utm_content',campaign_term:'utm_term',campaign_id:'utm_id'};
     Object.keys(trafficKeys).forEach(k=>{const v=safeText(a[trafficKeys[k]]);if(v)traffic[k]=v;});
     w.dataLayer.push({rx:null});
-    w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,quiz_id:'raiox02',launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox02',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
+    w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,quiz_id:'raiox02',launch:cfg.campaignTag||cfg.launch,technical_launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox02',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
   }
   function payload(name,details,lead) {
     seq+=1;persistRuntime();
