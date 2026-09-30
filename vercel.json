@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/:page(pagina01|pagina02|pagina03|pagina04)",
+      "destination": "/:page/",
+      "permanent": true
+    },
+    {
       "source": "/raiox06/",
       "destination": "/exercicioraiox/",
       "permanent": true
