@@ -126,14 +126,14 @@
   const dlSeen=new Set();
   const analyticKeys=['screen','step_id','step_index','step_type','question_id','question_index','option_count','error_code','element_id','link_domain','scroll_percent','active_seconds','video_id','video_percent','video_seconds','video_duration','is_autoplay','cta_delay_seconds','currency','value','load_ms','metric'];
   function publicEvent(name,id,details={}) {
-    if(cfg.testMode || (!consent.analytics && !consent.advertising)) return;
+    if(cfg.testMode) return;
     if(dlSeen.has(id+':'+name))return;dlSeen.add(id+':'+name);
     const params={};analyticKeys.forEach(k=>{const v=details[k];if(v===undefined||v===null)return;if(typeof v==='number'&&Number.isFinite(v)||typeof v==='boolean')params[k]=v;else if(typeof v==='string'&&v.length<=100&&!v.includes('@'))params[k]=v;});
     const traffic={},a=currentAttribution();
     const trafficKeys={campaign_source:'utm_source',campaign_medium:'utm_medium',campaign_name:'utm_campaign',campaign_content:'utm_content',campaign_term:'utm_term',campaign_id:'utm_id'};
     Object.keys(trafficKeys).forEach(k=>{const v=safeText(a[trafficKeys[k]]);if(v)traffic[k]=v;});
     w.dataLayer.push({rx:null});
-    w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,page_location:safeUrl(location.href),page_referrer:safeUrl(d.referrer),source:cfg.source,analytics:consent.analytics,advertising:consent.advertising,test_mode:cfg.testMode===true,traffic:traffic,params:params}});
+    w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,quiz_id:'raiox01',launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox01',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
   }
   function payload(name,details,lead) {
     seq+=1;persistRuntime();
@@ -212,6 +212,7 @@
     // Retentativa manual do mesmo cadastro conserva ID; dados alterados geram novo evento.
     if(!pendingLead||JSON.stringify(pendingLead.lead)!==JSON.stringify(normalized))pendingLead=payload('lead_submit',{},normalized);
     const p=pendingLead, result=await serial(p);
+    publicEvent('lead_submit',p.event_id,{screen:'lead'});
     publicEvent(result.lead_created===true?'generate_lead':'rx_lead_existing',p.event_id,{screen:'lead'});
     pendingLead=null;
     return result;
@@ -311,6 +312,7 @@
   }
   w.RX={registerSteps,getDiagnostics:()=>({build:cfg.pageBuild,endpoint:cfg.webhookUrl,launch:cfg.launch,test_mode:cfg.testMode,session_id:sessionId,session_confirmed:!!token,status:latestStatus?{...latestStatus}:null,last_error:lastDeliveryError?{...lastDeliveryError}:null,catalog_ready:(()=>{try{getSteps();return true;}catch{return false;}})()}),emit,saveLead,saveProgress,saveCheckpoint,getCheckpoint,checkoutSck,getSavedStatus:()=>latestStatus,publicEvent,normalizePhone,setContext,bindVturb,showConsent,safeUrl,getAttribution:currentAttribution,getSessionId:()=>sessionId,getTestMode:()=>cfg.testMode===true};
   bootstrapEvent=payload('page_view',{screen:'opening'});
+  publicEvent('page_view',bootstrapEvent.event_id,{screen:'opening'});
   serial(bootstrapEvent).catch(()=>{});
   d.addEventListener('DOMContentLoaded',()=>{
     const control=d.createElement('button');
