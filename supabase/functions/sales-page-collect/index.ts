@@ -52,6 +52,10 @@ function sanitizeProperties(value: unknown): Record<string,unknown> {
     for(const key of ["interaction_trusted","page_visible","target_visible","automation_driver","user_activation"]) {
       if(typeof input[key]==="boolean") out[key]=input[key];
     }
+    const interactionKind=safeText(input.interaction_kind,32);
+    if(interactionKind && ["pointer","touch","keyboard","wheel","scroll","checkout"].includes(interactionKind)) out.interaction_kind=interactionKind;
+    const dwellMs=Number(input.dwell_ms);
+    if(Number.isFinite(dwellMs) && dwellMs>=0 && dwellMs<=3600000) out.dwell_ms=Math.round(dwellMs);
   }
   return out;
 }
