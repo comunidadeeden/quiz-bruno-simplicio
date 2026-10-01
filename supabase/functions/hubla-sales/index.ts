@@ -194,6 +194,9 @@ Deno.serve(async (req: Request) => {
   const utm = paymentSession.utm && typeof paymentSession.utm === "object"
     ? paymentSession.utm
     : {};
+  const params = paymentSession.params && typeof paymentSession.params === "object"
+    ? paymentSession.params
+    : {};
   const cookies = paymentSession.cookies && typeof paymentSession.cookies === "object"
     ? paymentSession.cookies
     : {};
@@ -234,6 +237,8 @@ Deno.serve(async (req: Request) => {
     refunded_at: statusDate(invoice, "refunded"),
     created_at: isoDate(invoice.createdAt),
     updated_at: isoDate(invoice.modifiedAt),
+    src: str(params.src, 1000),
+    sck: str(params.sck, 4000),
     utm_source: str(utm.source, 500),
     utm_medium: str(utm.medium, 500),
     utm_campaign: str(utm.campaign, 500),
