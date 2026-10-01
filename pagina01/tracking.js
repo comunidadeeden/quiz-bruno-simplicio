@@ -44,6 +44,8 @@
       session_id: uuid(),
       page_view_event_id: uuid(),
       checkout_event_id: null,
+      quality_evidence_event_id: null,
+      quality_evidence_sent: false,
       cta_view_event_ids: {},
       cta_click_event_ids: {},
       saved_at: Date.now(),
@@ -65,6 +67,19 @@
     saveState();
     return map[ctaPosition];
   };
+
+  const pageStartedAt = performance.now();
+  const qualityProperties = (event, interactionKind, target = null, evidenceOnly = false) => ({
+    quality_version: 1,
+    ...(evidenceOnly ? { quality_evidence_only: true } : {}),
+    interaction_trusted: event?.isTrusted === true,
+    page_visible: document.visibilityState === "visible",
+    target_visible: target ? isVisibleCta(target) : true,
+    automation_driver: navigator.webdriver === true,
+    user_activation: navigator.userActivation?.hasBeenActive === true,
+    interaction_kind: interactionKind,
+    dwell_ms: Math.max(0, Math.round(performance.now() - pageStartedAt)),
+  });
 
   const allowedAttributionKeys = [
     "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id",
@@ -145,7 +160,7 @@
           removeFromQueue(payload.event_id);
           return true;
         }
-        if (response.status < 500 && response.status !== 429) break;
+        if (response.status < 500 && response.status !== 429 && response.status !== 409) break;
         lastError = new Error(result?.code || "delivery_failed");
       } catch (error) {
         lastError = error;
@@ -308,6 +323,30 @@
     return visible;
   };
 
+  const sendQualityEvidence = (event, interactionKind, target = null) => {
+    if (state.quality_evidence_sent) return;
+    const quality = qualityProperties(event, interactionKind, target, true);
+    if (!quality.interaction_trusted || !quality.page_visible || quality.automation_driver || quality.dwell_ms < 250) return;
+    if (!validUuid(state.quality_evidence_event_id)) state.quality_evidence_event_id = uuid();
+    state.quality_evidence_sent = true;
+    saveState();
+    void post(basePayload("cta_click", state.quality_evidence_event_id, quality));
+  };
+
+  const bindQualityEvidence = () => {
+    const handler = (event) => {
+      const kind = event.type === "pointerdown" ? "pointer"
+        : event.type === "touchstart" ? "touch"
+          : event.type === "keydown" ? "keyboard"
+            : "wheel";
+      sendQualityEvidence(event, kind);
+    };
+    window.addEventListener("pointerdown", handler, { capture: true, passive: true });
+    window.addEventListener("touchstart", handler, { capture: true, passive: true });
+    window.addEventListener("keydown", handler, { capture: true });
+    window.addEventListener("wheel", handler, { capture: true, passive: true });
+  };
+
   const flushQueue = async () => {
     const rows = loadQueue();
     for (const item of rows) {
@@ -325,6 +364,7 @@
 
   prepareCheckoutLinks();
   observeVisibleCtas();
+  bindQualityEvidence();
   void flushQueue();
 
   document.addEventListener("click", (event) => {
@@ -334,7 +374,11 @@
     if (!link) return;
 
     if (!link.dataset.pagina01Cta) reindexVisibleCtas();
-    const properties = ctaProperties(link);
+    const properties = {
+      ...ctaProperties(link),
+      ...qualityProperties(event, "checkout", link),
+    };
+    sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
 
     if (properties.cta_index) {
