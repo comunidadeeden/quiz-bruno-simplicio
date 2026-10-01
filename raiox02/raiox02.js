@@ -50,12 +50,12 @@ function splitBrazilPhoneForCheckout(value) {
 
 const VSL_PLAYERS = {
   terapeuta: {
-    id: "vid-6a42eb103f9c960ae39bbb50",
-    scriptUrl: "https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6a42eb103f9c960ae39bbb50/v4/player.js"
+    id: "vid-6abe93baef1e567f6a5759c7",
+    scriptUrl: "https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6abe93baef1e567f6a5759c7/v4/player.js"
   },
   nao_terapeuta: {
-    id: "vid-6a42eb18d77f3406e43d9b7e",
-    scriptUrl: "https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6a42eb18d77f3406e43d9b7e/v4/player.js"
+    id: "vid-6abe93baef1e567f6a5759c7",
+    scriptUrl: "https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6abe93baef1e567f6a5759c7/v4/player.js"
   }
 };
 
