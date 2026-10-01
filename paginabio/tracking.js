@@ -2,9 +2,9 @@
   "use strict";
 
   const cfg = {
-    pageId: "pagina01",
+    pageId: "paginabio",
     pageType: "sales_page",
-    source: "pagina01",
+    source: "paginabio",
     launch: "BS06OUT2026",
     endpoint: "https://nklqcamhkwqictdmictb.supabase.co/functions/v1/sales-page-collect",
     sessionMaxAgeMs: 6 * 60 * 60 * 1000,
@@ -23,8 +23,8 @@
     typeof value === "string"
     && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-  const stateKey = "pagina01_tracking_v1";
-  const queueKey = "pagina01_delivery_queue_v1";
+  const stateKey = "paginabio_tracking_v1";
+  const queueKey = "paginabio_delivery_queue_v1";
   let state = null;
 
   try {
@@ -223,7 +223,7 @@
     });
   };
 
-  const checkoutMarker = "pagina01_" + state.session_id.replace(/-/g, "");
+  const checkoutMarker = "paginabio_" + state.session_id.replace(/-/g, "");
   const trackedKeys = [
     "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id",
     "utm_adset", "utm_ad", "fbclid", "gclid", "gbraid", "wbraid", "ttclid", "msclkid",
@@ -244,12 +244,12 @@
   const reindexVisibleCtas = () => {
     const links = checkoutLinks();
     links.forEach((link) => {
-      delete link.dataset.pagina01Cta;
+      delete link.dataset.paginabioCta;
       delete link.dataset.rxSalesPageCtaTotal;
     });
     const visible = links.filter(isVisibleCta);
     visible.forEach((link, index) => {
-      link.dataset.pagina01Cta = String(index + 1);
+      link.dataset.paginabioCta = String(index + 1);
       link.dataset.rxSalesPageCtaTotal = String(visible.length);
     });
     return visible;
@@ -268,7 +268,7 @@
           if (value && value.length <= 250) url.searchParams.set(key, value);
         }
 
-        const markerPattern = /(?:^|~)pagina01_[0-9a-f]{32}(?=~|$)/gi;
+        const markerPattern = /(?:^|~)paginabio_[0-9a-f]{32}(?=~|$)/gi;
         const inboundSck = (attribution.sck || url.searchParams.get("sck") || "")
           .replace(markerPattern, "")
           .replace(/^~|~$/g, "");
@@ -284,7 +284,7 @@
   };
 
   const ctaProperties = (link) => {
-    const rawIndex = Number(link.dataset.pagina01Cta);
+    const rawIndex = Number(link.dataset.paginabioCta);
     const ctaIndex = Number.isInteger(rawIndex) && rawIndex > 0 ? rawIndex : 0;
     const rawTotal = Number(link.dataset.rxSalesPageCtaTotal);
     const ctaTotal = Number.isInteger(rawTotal) && rawTotal > 0 ? rawTotal : reindexVisibleCtas().length;
@@ -373,7 +373,7 @@
       : null;
     if (!link) return;
 
-    if (!link.dataset.pagina01Cta) reindexVisibleCtas();
+    if (!link.dataset.paginabioCta) reindexVisibleCtas();
     const properties = {
       ...ctaProperties(link),
       ...qualityProperties(event, "checkout", link),
