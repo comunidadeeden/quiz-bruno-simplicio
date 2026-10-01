@@ -1,7 +1,7 @@
 /* Quality evidence only. Never blocks navigation, changes page content or fires pixels. */
 (() => {
   "use strict";
-  const match = location.pathname.replace(/^\/paginabio(?=\/|$)/i, "/pagina01").match(/^\/(pagina0[1-4]|raiox0[12])(?:\/|$)/i);
+  const match = location.pathname.match(/^\/(pagina0[1-4]|paginabio|raiox0[12])(?:\/|$)/i);
   if (!match || window.__RX_CHECKOUT_QUALITY_V1) return;
   window.__RX_CHECKOUT_QUALITY_V1 = true;
   const pageId = match[1].toLowerCase();
