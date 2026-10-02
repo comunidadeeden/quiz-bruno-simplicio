@@ -1886,3 +1886,99 @@ button,
   }
 }
 
+
+
+/* =========================================================
+   RAIOX03 — PRIMEIRA TELA INTRODUTÓRIA
+   Texto + imagem + CTA; cadastro permanece na tela seguinte.
+   ========================================================= */
+.rx03-intro {
+  width: 100%;
+  text-align: center;
+}
+
+.rx03-intro-kicker {
+  margin: 0 auto 18px;
+  color: #b9862f;
+  font-family: var(--sans);
+  font-size: clamp(13px, 1.5vw, 17px);
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.rx03-intro-title {
+  max-width: 900px;
+  margin: 0 auto 28px;
+  color: var(--navy);
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: clamp(38px, 5vw, 64px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+.rx03-intro-visual {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(39, 107, 182, .18);
+  border-radius: 24px;
+  background: #eef8ff;
+}
+
+.rx03-intro-visual img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.rx03-intro-cta {
+  width: min(100%, 640px);
+  margin: 28px auto 0;
+}
+
+.rx03-intro-button {
+  width: 100%;
+  min-height: 58px;
+  cursor: pointer;
+}
+
+.screen:has(.rx03-intro) .panel-inner {
+  padding-top: 44px;
+  padding-bottom: 52px;
+}
+
+@media (max-width: 600px) {
+  .screen:has(.rx03-intro) .panel-inner {
+    padding: 28px 14px 34px;
+  }
+
+  .rx03-intro-kicker {
+    margin-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: .14em;
+  }
+
+  .rx03-intro-title {
+    max-width: 100%;
+    margin-bottom: 18px;
+    font-size: clamp(27px, 8.4vw, 36px);
+    line-height: 1.08;
+    text-wrap: pretty;
+  }
+
+  .rx03-intro-visual {
+    border-radius: 16px;
+  }
+
+  .rx03-intro-cta {
+    margin-top: 20px;
+  }
+
+  .rx03-intro-button {
+    min-height: 52px;
+    font-size: 15px;
+  }
+}
