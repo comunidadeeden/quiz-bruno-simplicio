@@ -272,9 +272,12 @@ function validateLead(lead) {
 function renderStep() {
   const step = STEPS[state.stepIndex];
   const progress = ((state.stepIndex + 1) / STEPS.length) * 100;
+  const requiresConfirmation = state.stepIndex === 0 && step.type === "question";
   state.pendingOptionIndex = null;
+
   RX.emit("quiz_step_view", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
   if (step.type === "insight") return renderInsight(step, progress);
+
   root.innerHTML = panel(`
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
     <div class="question-number">${step.label} · etapa ${state.stepIndex + 1} de ${STEPS.length}</div>
@@ -282,29 +285,44 @@ function renderStep() {
     <div class="options" role="radiogroup" aria-label="${step.text}">
       ${step.options.map((option, index) => `<button class="option" type="button" role="radio" aria-checked="false" data-index="${index}">${option.label}</button>`).join("")}
     </div>
-    <div class="question-continue-wrap">
-      <button class="button button-primary question-continue" id="question-continue-button" type="button" disabled>Continuar</button>
-    </div>
+    ${requiresConfirmation ? `
+      <div class="question-continue-wrap">
+        <button class="button button-primary question-continue" id="question-continue-button" type="button" disabled>Continuar</button>
+      </div>
+    ` : ""}
   `);
 
-  const continueButton = document.querySelector("#question-continue-button");
+  const continueButton = requiresConfirmation
+    ? document.querySelector("#question-continue-button")
+    : null;
+
   document.querySelectorAll(".option").forEach((button) => {
     button.addEventListener("click", () => {
-      state.pendingOptionIndex = Number(button.dataset.index);
+      const optionIndex = Number(button.dataset.index);
+
       document.querySelectorAll(".option").forEach((item) => {
         const selected = item === button;
         item.classList.toggle("selected", selected);
         item.setAttribute("aria-checked", selected ? "true" : "false");
       });
-      continueButton.disabled = false;
+
+      if (requiresConfirmation) {
+        state.pendingOptionIndex = optionIndex;
+        if (continueButton) continueButton.disabled = false;
+        return;
+      }
+
+      answerStep(step, optionIndex, button, null);
     });
   });
 
-  continueButton.addEventListener("click", () => {
-    if (!Number.isInteger(state.pendingOptionIndex)) return;
-    const selected = document.querySelector(`.option[data-index="${state.pendingOptionIndex}"]`);
-    if (selected) answerStep(step, state.pendingOptionIndex, selected, continueButton);
-  });
+  if (continueButton) {
+    continueButton.addEventListener("click", () => {
+      if (!Number.isInteger(state.pendingOptionIndex)) return;
+      const selected = document.querySelector(`.option[data-index="${state.pendingOptionIndex}"]`);
+      if (selected) answerStep(step, state.pendingOptionIndex, selected, continueButton);
+    });
+  }
 }
 
 function markStepCompleted(stepId) {
