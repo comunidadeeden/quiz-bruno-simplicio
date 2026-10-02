@@ -1,5 +1,5 @@
 const RAIOX_CONFIG = {
-  checkoutUrl: "https://pay.hotmart.com/P106544757H",
+  checkoutUrl: "https://pay.hub.la/XhmUngrBMRpSh984fDuG",
   leadWebhookUrl: window.RX_CONFIG.webhookUrl,
   source: "quiz_raiox01",
   workshopDateText: "6 e 7 de Outubro, às 20h · ao vivo",
@@ -440,7 +440,7 @@ function renderResult() {
   window.setTimeout(() => {const cta=document.querySelector("#checkout-cta");if(cta){cta.classList.add("visible");RX.emit("rx_cta_view",{element_id:"checkout-button",cta_delay_seconds:RAIOX_CONFIG.ctaDelaySeconds});}}, RAIOX_CONFIG.ctaDelaySeconds * 1000);
   document.querySelector("#checkout-button").addEventListener("click", () => {
     state.checkoutClicked = true;RX.saveCheckpoint(state);
-    RX.emit("rx_checkout_click", {element_id:"checkout-button",link_domain:"pay.hotmart.com",currency:"BRL",value:37});
+    RX.emit("rx_checkout_click", {element_id:"checkout-button",link_domain:"pay.hub.la",currency:"BRL",value:37});
   });
 }
 
@@ -460,6 +460,9 @@ function loadVturbPlayer(player) {
 function buildCheckoutUrl() {
   const url = new URL(RAIOX_CONFIG.checkoutUrl);
   Object.entries(RX.getAttribution()).forEach(([key, value]) => url.searchParams.set(key, value));
+  const pageMarker = "pg_raiox01";
+  const currentContent = url.searchParams.get("utm_content") || "";
+  if (!currentContent.split("~").filter(Boolean).includes(pageMarker)) url.searchParams.set("utm_content", currentContent ? currentContent + "~" + pageMarker : pageMarker);
   url.searchParams.set("src", RX.getAttribution().src || state.utms.src || RAIOX_CONFIG.source);
   if(RX_CONFIG.correlateCheckout)url.searchParams.set("sck",RX.checkoutSck(url.searchParams.get("sck")));
 
