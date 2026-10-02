@@ -273,17 +273,22 @@ function validateLead(lead) {
 
 function renderIntro() {
   root.innerHTML = panel(`
-    <section class="rx03-intro" aria-labelledby="rx03-intro-title">
-      <div class="rx03-intro-kicker">WORKSHOP RAIO-X HUMANO</div>
-      <h1 class="rx03-intro-title" id="rx03-intro-title">
-        VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.
-      </h1>
-      <figure class="rx03-intro-visual">
-        <img src="/raio-x-hero-wide.webp?v=2" alt="Workshop Raio-X Humano" width="1586" height="992">
+    <section class="rx03-match-raiox01">
+      <span class="eyebrow">Workshop Raio-X Humano</span>
+      <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
+      <figure class="raiox-hero-visual">
+        <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+        <span class="raiox-scan-line" aria-hidden="true"></span>
       </figure>
-      <div class="rx03-intro-cta">
-        <button class="button button-primary rx03-intro-button" id="intro-test-button" type="button">Fazer Meu Teste Agora</button>
-      </div>
+      <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
+      <ul class="opening-list opening-benefits">
+        <li>Entender melhor as pessoas antes mesmo da primeira conversa.</li>
+        <li>Identificar traços de personalidade e padrões de comportamento.</li>
+        <li>Reconhecer sinais no rosto que indicam experiências emocionais marcantes.</li>
+        <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
+      </ul>
+      <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
+      <div class="fixed-cta"><button class="button button-primary" id="intro-test-button" type="button">Fazer Meu Teste Agora!!</button></div>
     </section>
   `);
   RX.setContext({screen:"intro"});
