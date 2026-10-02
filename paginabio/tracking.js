@@ -232,7 +232,16 @@
     "meta_platform", "meta_placement", "xcod",
   ];
 
-  const checkoutLinks = () => [...document.querySelectorAll('a[href*="pay.hotmart.com"]')];
+  const isCheckoutUrl = (value) => {
+    try {
+      const host = new URL(value, location.href).hostname.toLowerCase();
+      return host === "pay.hotmart.com" || host === "hub.la" || host.endsWith(".hub.la");
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const checkoutLinks = () => [...document.querySelectorAll('a[href]')].filter((link) => isCheckoutUrl(link.href));
 
   const isVisibleCta = (link) => {
     if (!(link instanceof HTMLElement)) return false;
@@ -256,11 +265,11 @@
   };
 
   const prepareCheckoutLinks = () => {
-    const links = [...document.querySelectorAll('a[href*="pay.hotmart.com"]')];
+    const links = checkoutLinks();
     links.forEach((link) => {
       try {
         const url = new URL(link.href, location.href);
-        if (url.hostname !== "pay.hotmart.com") return;
+        if (!isCheckoutUrl(url.toString())) return;
 
         url.searchParams.set("src", cfg.source);
         for (const key of trackedKeys) {
@@ -369,9 +378,9 @@
 
   document.addEventListener("click", (event) => {
     const link = event.target instanceof Element
-      ? event.target.closest('a[href*="pay.hotmart.com"]')
+      ? event.target.closest('a[href]')
       : null;
-    if (!link) return;
+    if (!link || !isCheckoutUrl(link.href)) return;
 
     if (!link.dataset.paginabioCta) reindexVisibleCtas();
     const properties = {
