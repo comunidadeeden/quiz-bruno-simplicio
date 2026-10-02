@@ -183,7 +183,7 @@ const progressLabel = document.querySelector("#progress-label");
 let state = createState();
 // Resume only the state whose previous requests were acknowledged; no PII is restored.
 const resumed=RX.getCheckpoint();
-if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]?.id===id)){
+if(resumed && Array.isArray(resumed.completedSteps) && resumed.completedSteps.every((id,i)=>STEPS[i]?.id===id)){
   const count=resumed.completedSteps.length;
   const consistent=STEPS.filter(s=>s.type==='question'&&resumed.completedSteps.includes(s.id))
     .every(s=>Number.isInteger(resumed.answerIndexes[s.id])&&resumed.answerIndexes[s.id]>=0&&resumed.answerIndexes[s.id]<s.options.length);
@@ -229,9 +229,8 @@ function render() {
   updateProgress();
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
-  if(state.leadSaved)RX.saveCheckpoint(state);
+  if(state.screen !== "intro")RX.saveCheckpoint(state);
   if (state.screen === "intro") return renderIntro();
-  if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
   if (state.screen === "loading") return renderLoading();
   return renderResult();
@@ -280,54 +279,29 @@ function renderIntro() {
         <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
         <span class="raiox-scan-line" aria-hidden="true"></span>
       </figure>
-      <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
-      <ul class="opening-list opening-benefits">
-        <li>Entender melhor as pessoas antes mesmo da primeira conversa.</li>
-        <li>Identificar traços de personalidade e padrões de comportamento.</li>
-        <li>Reconhecer sinais no rosto que indicam experiências emocionais marcantes.</li>
-        <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
-      </ul>
-      <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
       <div class="fixed-cta"><button class="button button-primary" id="intro-test-button" type="button">Fazer Meu Teste Agora!!</button></div>
     </section>
   `);
   RX.setContext({screen:"intro"});
   RX.emit("rx_cta_view", {element_id:"intro-test-button"});
-  document.querySelector("#intro-test-button").addEventListener("click", () => {
-    state.screen = "opening";
-    RX.setContext({screen:"opening"});
+  document.querySelector("#intro-test-button").addEventListener("click", async () => {
+    const button = document.querySelector("#intro-test-button");
+    if (button.disabled) return;
+    button.disabled = true;
+    button.textContent = "Carregando...";
+    const result = await RX.emit("quiz_start", {screen:"intro"});
+    if (result?.ok === false) {
+      button.disabled = false;
+      button.textContent = "Fazer Meu Teste Agora!!";
+      showSaveError("Não conseguimos iniciar seu teste agora. Verifique sua conexão e tente novamente.");
+      return;
+    }
+    state.captureViewed = true;
+    state.screen = "step";
+    RX.setContext({screen:"step",step_index:1,step_id:STEPS[0]?.id,step_type:STEPS[0]?.type});
+    RX.saveCheckpoint(state);
     render();
   });
-}
-
-function renderOpening() {
-  const lead = state.lead || {};
-  root.innerHTML = panel(`
-    <figure class="raiox-hero-visual">
-      <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
-      <span class="raiox-scan-line" aria-hidden="true"></span>
-    </figure>
-    <h1 class="opening-title">
-      <span class="opening-line">APRENDA ENXERGAR SE UMA PESSOA</span>
-      <span class="opening-line">TEM TRAUMAS OU SOFREU ABUSO OU</span>
-      <span class="opening-line">SE TEM PROBLEMAS COM PAI E MÃE</span>
-    </h1>
-    <h2 class="opening-secondary-title">APENAS OLHANDO O ROSTO E O CORPO EM 5 SEGUNDOS!</h2>
-    <p class="opening-subtitle">EM APENAS 2 NOITES AO VIVO COM MATERIAL DE APOIO NA PRÁTICA</p>
-    <form class="form opening-form" id="lead-form" novalidate>
-      <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field"><label for="phone">Telefone ( Whatsapp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
-      <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
-      <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" id="start-button" type="submit">QUERO APRENDER</button></div>
-    </form>
-    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
-  `);
-  const form = document.querySelector("#lead-form");
-  form.addEventListener("submit", handleLeadSubmit);
-  form.addEventListener("input", () => RX.emit("rx_form_start", {screen:"opening"}), {once:true});
-  state.captureViewed = true;
-  RX.emit("rx_form_view", {screen:"opening"});
 }
 
 function renderStep() {
@@ -477,18 +451,6 @@ function buildCheckoutUrl() {
   if (!currentContent.split("~").filter(Boolean).includes(pageMarker)) url.searchParams.set("utm_content", currentContent ? currentContent + "~" + pageMarker : pageMarker);
   url.searchParams.set("src", RX.getAttribution().src || state.utms.src || RAIOX_CONFIG.source);
   if(RX_CONFIG.correlateCheckout)url.searchParams.set("sck",RX.checkoutSck(url.searchParams.get("sck")));
-
-  const lead = getCheckoutPrefill();
-  if (lead) {
-    if (lead.name) url.searchParams.set("name", String(lead.name).trim());
-    if (lead.email) url.searchParams.set("email", String(lead.email).trim().toLowerCase());
-
-    const phone = splitBrazilPhoneForCheckout(lead.phone);
-    if (phone) {
-      url.searchParams.set("phoneac", phone.areaCode);
-      url.searchParams.set("phonenumber", phone.number);
-    }
-  }
 
   return url.toString();
 }
