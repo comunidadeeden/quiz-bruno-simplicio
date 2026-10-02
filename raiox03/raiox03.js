@@ -200,7 +200,7 @@ if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]
 function createState() {
   const startedAt = new Date().toISOString();
   return {
-    screen: "opening",
+    screen: "intro",
     stepIndex: 0,
     lead: null,
     leadSaved: false,
@@ -230,6 +230,7 @@ function render() {
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
   if(state.leadSaved)RX.saveCheckpoint(state);
+  if (state.screen === "intro") return renderIntro();
   if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
   if (state.screen === "loading") return renderLoading();
@@ -268,6 +269,30 @@ function validateLead(lead) {
   if(lead.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
   if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
   return null;
+}
+
+function renderIntro() {
+  root.innerHTML = panel(`
+    <section class="rx03-intro" aria-labelledby="rx03-intro-title">
+      <div class="rx03-intro-kicker">WORKSHOP RAIO-X HUMANO</div>
+      <h1 class="rx03-intro-title" id="rx03-intro-title">
+        VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.
+      </h1>
+      <figure class="rx03-intro-visual">
+        <img src="/raio-x-hero-wide.webp?v=2" alt="Workshop Raio-X Humano" width="1586" height="992">
+      </figure>
+      <div class="rx03-intro-cta">
+        <button class="button button-primary rx03-intro-button" id="intro-test-button" type="button">Fazer Meu Teste Agora</button>
+      </div>
+    </section>
+  `);
+  RX.setContext({screen:"intro"});
+  RX.emit("rx_cta_view", {element_id:"intro-test-button"});
+  document.querySelector("#intro-test-button").addEventListener("click", () => {
+    state.screen = "opening";
+    RX.setContext({screen:"opening"});
+    render();
+  });
 }
 
 function renderOpening() {
