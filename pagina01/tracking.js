@@ -277,6 +277,14 @@
           if (value && value.length <= 250) url.searchParams.set(key, value);
         }
 
+        // Hubla persiste oficialmente UTMs. Mantém o utm_content original e acrescenta a página de origem.
+        const pageMarker = "pg_" + cfg.pageId;
+        const currentContent = url.searchParams.get("utm_content") || "";
+        const contentParts = currentContent.split("~").filter(Boolean);
+        if (!contentParts.includes(pageMarker)) {
+          url.searchParams.set("utm_content", currentContent ? currentContent + "~" + pageMarker : pageMarker);
+        }
+
         const markerPattern = /(?:^|~)pagina01_[0-9a-f]{32}(?=~|$)/gi;
         const inboundSck = (attribution.sck || url.searchParams.get("sck") || "")
           .replace(markerPattern, "")
@@ -383,9 +391,13 @@
     if (!link || !isCheckoutUrl(link.href)) return;
 
     if (!link.dataset.pagina01Cta) reindexVisibleCtas();
+    let checkoutDomain = "";
+    try { checkoutDomain = new URL(link.href, location.href).hostname.toLowerCase(); } catch (_) {}
     const properties = {
       ...ctaProperties(link),
       ...qualityProperties(event, "checkout", link),
+      checkout_provider: checkoutDomain.endsWith("hub.la") ? "hubla" : (checkoutDomain === "pay.hotmart.com" ? "hotmart" : "other"),
+      checkout_domain: checkoutDomain,
     };
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
