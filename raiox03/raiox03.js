@@ -200,7 +200,7 @@ if(resumed && Array.isArray(resumed.completedSteps) && resumed.completedSteps.ev
 function createState() {
   const startedAt = new Date().toISOString();
   return {
-    screen: "intro",
+    screen: "step",
     stepIndex: 0,
     lead: null,
     leadSaved: false,
@@ -229,8 +229,7 @@ function render() {
   updateProgress();
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
-  if(state.screen !== "intro")RX.saveCheckpoint(state);
-  if (state.screen === "intro") return renderIntro();
+  RX.saveCheckpoint(state);
   if (state.screen === "step") return renderStep();
   if (state.screen === "loading") return renderLoading();
   return renderResult();
@@ -270,43 +269,10 @@ function validateLead(lead) {
   return null;
 }
 
-function renderIntro() {
-  root.innerHTML = panel(`
-    <section class="rx03-match-raiox01">
-      <span class="eyebrow">Workshop Raio-X Humano</span>
-      <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
-      <figure class="raiox-hero-visual">
-        <img src="/raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
-        <span class="raiox-scan-line" aria-hidden="true"></span>
-      </figure>
-      <div class="fixed-cta"><button class="button button-primary" id="intro-test-button" type="button">Fazer Meu Teste Agora!!</button></div>
-    </section>
-  `);
-  RX.setContext({screen:"intro"});
-  RX.emit("rx_cta_view", {element_id:"intro-test-button"});
-  document.querySelector("#intro-test-button").addEventListener("click", async () => {
-    const button = document.querySelector("#intro-test-button");
-    if (button.disabled) return;
-    button.disabled = true;
-    button.textContent = "Carregando...";
-    const result = await RX.emit("quiz_start", {screen:"intro"});
-    if (result?.ok === false) {
-      button.disabled = false;
-      button.textContent = "Fazer Meu Teste Agora!!";
-      showSaveError("Não conseguimos iniciar seu teste agora. Verifique sua conexão e tente novamente.");
-      return;
-    }
-    state.captureViewed = true;
-    state.screen = "step";
-    RX.setContext({screen:"step",step_index:1,step_id:STEPS[0]?.id,step_type:STEPS[0]?.type});
-    RX.saveCheckpoint(state);
-    render();
-  });
-}
-
 function renderStep() {
   const step = STEPS[state.stepIndex];
   const progress = ((state.stepIndex + 1) / STEPS.length) * 100;
+  state.pendingOptionIndex = null;
   RX.emit("quiz_step_view", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
   if (step.type === "insight") return renderInsight(step, progress);
   root.innerHTML = panel(`
@@ -314,10 +280,31 @@ function renderStep() {
     <div class="question-number">${step.label} · etapa ${state.stepIndex + 1} de ${STEPS.length}</div>
     <h2 class="question-title">${step.text}</h2>
     <div class="options" role="radiogroup" aria-label="${step.text}">
-      ${step.options.map((option, index) => `<button class="option" type="button" data-index="${index}">${option.label}</button>`).join("")}
+      ${step.options.map((option, index) => `<button class="option" type="button" role="radio" aria-checked="false" data-index="${index}">${option.label}</button>`).join("")}
+    </div>
+    <div class="question-continue-wrap">
+      <button class="button button-primary question-continue" id="question-continue-button" type="button" disabled>Continuar</button>
     </div>
   `);
-  document.querySelectorAll(".option").forEach((button) => button.addEventListener("click", () => answerStep(step, Number(button.dataset.index), button)));
+
+  const continueButton = document.querySelector("#question-continue-button");
+  document.querySelectorAll(".option").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.pendingOptionIndex = Number(button.dataset.index);
+      document.querySelectorAll(".option").forEach((item) => {
+        const selected = item === button;
+        item.classList.toggle("selected", selected);
+        item.setAttribute("aria-checked", selected ? "true" : "false");
+      });
+      continueButton.disabled = false;
+    });
+  });
+
+  continueButton.addEventListener("click", () => {
+    if (!Number.isInteger(state.pendingOptionIndex)) return;
+    const selected = document.querySelector(`.option[data-index="${state.pendingOptionIndex}"]`);
+    if (selected) answerStep(step, state.pendingOptionIndex, selected, continueButton);
+  });
 }
 
 function markStepCompleted(stepId) {
@@ -351,9 +338,9 @@ function showSaveError(message){
   clearSaveError();const box=document.createElement("p");box.id="quiz-save-error";box.className="error";box.setAttribute("role","alert");box.textContent=message;
   const target=document.querySelector(".panel-inner");if(target)target.appendChild(box);
 }
-async function answerStep(step, optionIndex, button) {
+async function answerStep(step, optionIndex, button, continueButton) {
   const option=step.options[optionIndex];
-  document.querySelectorAll(".option").forEach(item=>item.disabled=true);button.classList.add("selected");clearSaveError();
+  document.querySelectorAll(".option").forEach(item=>item.disabled=true);if(continueButton){continueButton.disabled=true;continueButton.textContent="Salvando...";}button.classList.add("selected");clearSaveError();
   const completed=state.completedSteps.includes(step.id)?[...state.completedSteps]:[...state.completedSteps,step.id];
   try {
     await RX.saveProgress("quiz_answer", {question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:state.stepIndex+1,option_count:step.options.length,completed_steps:completed});
@@ -362,8 +349,9 @@ async function answerStep(step, optionIndex, button) {
     RX.emit("quiz_step_complete",{step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
     state.stepIndex+=1;if(state.stepIndex>=STEPS.length)state.screen="loading";render();
   } catch (_) {
-    document.querySelectorAll(".option").forEach(item=>{item.disabled=false;item.classList.remove("selected");});
-    showSaveError("Não conseguimos salvar sua resposta. Verifique sua conexão e selecione a opção novamente.");
+    document.querySelectorAll(".option").forEach(item=>{item.disabled=false;});
+    if(continueButton){continueButton.disabled=false;continueButton.textContent="Continuar";}
+    showSaveError("Não conseguimos salvar sua resposta. Verifique sua conexão e toque em Continuar novamente.");
   }
 }
 
@@ -459,4 +447,28 @@ function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-render();
+async function bootstrapQuiz() {
+  state.screen = state.screen === "loading" || state.screen === "result" ? state.screen : "step";
+
+  if (!resumed && state.stepIndex === 0 && state.completedSteps.length === 0) {
+    root.innerHTML = panel(`<div class="loading direct-entry-loading"><div class="loading-ring" aria-hidden="true"></div><p>Preparando seu teste...</p></div>`);
+    const started = await RX.emit("quiz_start", {screen:"direct_entry",step_id:STEPS[0].id,step_index:1});
+    if (started?.ok === false) {
+      root.innerHTML = panel(`
+        <div class="direct-entry-error">
+          <h2>Não conseguimos iniciar seu teste agora.</h2>
+          <p>Verifique sua conexão e tente novamente.</p>
+          <button class="button button-primary" id="retry-start-quiz" type="button">Tentar novamente</button>
+        </div>
+      `);
+      document.querySelector("#retry-start-quiz").addEventListener("click", bootstrapQuiz);
+      return;
+    }
+  }
+
+  RX.setContext({screen:"step",step_index:state.stepIndex+1,step_id:STEPS[state.stepIndex]?.id,step_type:STEPS[state.stepIndex]?.type});
+  RX.saveCheckpoint(state);
+  render();
+}
+
+bootstrapQuiz();
