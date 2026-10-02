@@ -56,10 +56,18 @@
         && Date.now() - record.saved_at >= 0 && Date.now() - record.saved_at < 21600000) void send(sid,signature,record);
     }
   };
+  const isCheckoutUrl = value => {
+    try {
+      const host = new URL(value, location.href).hostname.toLowerCase();
+      return host === "pay.hotmart.com" || host === "hub.la" || host.endsWith(".hub.la");
+    } catch (_) {
+      return false;
+    }
+  };
   document.addEventListener("click", event => {
     try {
       const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
-      if (!link || new URL(link.href, location.href).hostname !== "pay.hotmart.com") return;
+      if (!link || !isCheckoutUrl(link.href)) return;
       const sid = session(); if (!sid) return;
       const rect = link.getBoundingClientRect(), style = getComputedStyle(link);
       const properties = {
