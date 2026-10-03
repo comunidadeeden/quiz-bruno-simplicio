@@ -371,6 +371,7 @@
     if (!element.dataset.rxButtonId) {
       genericButtonSequence += 1;
       element.dataset.rxButtonId = "button_" + String(genericButtonSequence).padStart(2, "0");
+      element.dataset.rxButtonIndex = String(genericButtonSequence);
     }
     const text = (
       element.getAttribute("aria-label")
@@ -380,7 +381,7 @@
     ).trim().replace(/\s+/g, " ").slice(0, 120);
     return {
       cta_position: element.dataset.rxButtonId,
-      cta_index: genericButtonSequence,
+      cta_index: Number(element.dataset.rxButtonIndex || 0),
       cta_total: document.querySelectorAll("button").length,
       cta_text: text,
       element_id: element.id || element.dataset.rxButtonId,
