@@ -410,6 +410,75 @@
     void post(basePayload("cta_click", eventId, properties));
   }, { capture: true });
 
+  const quizRuntime = {
+    started: false,
+    completed: false,
+    current_step_id: "",
+    current_step_index: 0,
+    answers_count: 0,
+    last_status: "",
+  };
+
+  const emitQuizEvent = (eventName, properties = {}) => {
+    const eventId = uuid();
+    const props = { ...properties };
+    pushGtm(eventName, eventId, props);
+    void post(basePayload(eventName, eventId, props));
+  };
+
+  window.addEventListener("raioxvsl1:quiz_event", (event) => {
+    const detail = event && event.detail && typeof event.detail === "object" ? event.detail : {};
+    const name = String(detail.name || "");
+    const properties = detail.properties && typeof detail.properties === "object" ? detail.properties : {};
+    if (!name) return;
+
+    if (name === "quiz_started") quizRuntime.started = true;
+    if (properties.step_id) quizRuntime.current_step_id = String(properties.step_id);
+    if (Number.isInteger(properties.step_index)) quizRuntime.current_step_index = properties.step_index;
+    if (name === "quiz_answer") quizRuntime.answers_count += 1;
+    if (name === "quiz_completed") quizRuntime.completed = true;
+    if (properties.quiz_status) quizRuntime.last_status = String(properties.quiz_status);
+
+    emitQuizEvent(name, properties);
+  });
+
+  let stopSignalSent = false;
+  document.addEventListener("visibilitychange", () => {
+    if (
+      document.visibilityState === "hidden"
+      && quizRuntime.started
+      && !quizRuntime.completed
+      && !stopSignalSent
+    ) {
+      stopSignalSent = true;
+      emitQuizEvent("quiz_stopped", {
+        step_id: quizRuntime.current_step_id,
+        step_index: quizRuntime.current_step_index,
+        answers_count: quizRuntime.answers_count,
+        quiz_status: "parou",
+      });
+    }
+    if (document.visibilityState === "visible") stopSignalSent = false;
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (!quizRuntime.started || quizRuntime.completed) return;
+    emitQuizEvent("quiz_abandoned", {
+      step_id: quizRuntime.current_step_id,
+      step_index: quizRuntime.current_step_index,
+      answers_count: quizRuntime.answers_count,
+      quiz_status: "abandonou",
+    });
+  });
+
+  window.addEventListener("raioxvsl1:vsl_started", () => {
+    emitQuizEvent("vsl_started", { quiz_status: "finalizou_quiz" });
+  });
+
+  window.addEventListener("vsl:revealed", () => {
+    emitQuizEvent("vsl_offer_revealed", { quiz_status: "oferta_liberada" });
+  });
+
   const flushQueue = async () => {
     const rows = loadQueue();
     for (const item of rows) {
