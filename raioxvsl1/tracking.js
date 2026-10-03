@@ -23,8 +23,9 @@
     typeof value === "string"
     && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-  const stateKey = "raioxvsl1_tracking_v1";
-  const queueKey = "raioxvsl1_delivery_queue_v1";
+  const testMode = new URLSearchParams(location.search).get("rx_test") === "1";
+  const stateKey = "raioxvsl1_tracking_v1" + (testMode ? "_test" : "");
+  const queueKey = "raioxvsl1_delivery_queue_v1" + (testMode ? "_test" : "");
   let state = null;
 
   try {
@@ -135,11 +136,11 @@
     saveQueue(loadQueue().filter((item) => item.payload.event_id !== eventId));
   };
 
-  const post = async (payload) => {
+  const deliver = async (payload) => {
     let lastError = null;
     for (let attempt = 0; attempt <= cfg.maxRetries; attempt += 1) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
+      const timer = setTimeout(() => controller.abort(), 20000);
       try {
         const response = await fetch(cfg.endpoint, {
           method: "POST",
@@ -175,6 +176,15 @@
     return false;
   };
 
+  const inFlight = new Map();
+  const post = (payload) => {
+    if (inFlight.has(payload.event_id)) return inFlight.get(payload.event_id);
+    enqueue(payload);
+    const task = deliver(payload).finally(() => inFlight.delete(payload.event_id));
+    inFlight.set(payload.event_id, task);
+    return task;
+  };
+
   const basePayload = (eventName, eventId, properties = {}) => ({
     event_id: eventId,
     session_id: state.session_id,
@@ -188,17 +198,19 @@
     referrer: safeUrl(document.referrer),
     attribution,
     properties,
-    test_mode: false,
+    test_mode: testMode,
   });
 
   window.dataLayer = window.dataLayer || [];
   const pushGtm = (name, eventId, properties = {}) => {
+    if (testMode) return;
     window.dataLayer.push({ rx: null });
     window.dataLayer.push({
       event: "rx_event",
       rx: {
         name,
         event_id: eventId,
+        session_id: state.session_id,
         quiz_id: cfg.pageId,
         page_id: cfg.pageId,
         page_type: cfg.pageType,
@@ -209,7 +221,7 @@
         page_referrer: safeUrl(document.referrer),
         analytics: true,
         advertising: true,
-        test_mode: false,
+        test_mode: testMode,
         traffic: {
           campaign_source: attribution.utm_source || "",
           campaign_medium: attribution.utm_medium || "",
@@ -218,7 +230,7 @@
           campaign_term: attribution.utm_term || "",
           campaign_id: attribution.utm_id || "",
         },
-        params: properties,
+        params: { ...properties, session_id: state.session_id },
       },
     });
   };
@@ -381,7 +393,7 @@
     ).trim().replace(/\s+/g, " ").slice(0, 120);
     return {
       cta_position: element.dataset.rxButtonId,
-      cta_index: Number(element.dataset.rxButtonIndex || 0),
+      cta_index: 0, // Generic buttons are not checkout CTA positions.
       cta_total: document.querySelectorAll("button").length,
       cta_text: text,
       element_id: element.id || element.dataset.rxButtonId,
@@ -435,7 +447,7 @@
     if (name === "quiz_started") quizRuntime.started = true;
     if (properties.step_id) quizRuntime.current_step_id = String(properties.step_id);
     if (Number.isInteger(properties.step_index)) quizRuntime.current_step_index = properties.step_index;
-    if (name === "quiz_answer") quizRuntime.answers_count += 1;
+    if (Number.isInteger(properties.answers_count)) quizRuntime.answers_count = properties.answers_count;
     if (name === "quiz_completed") quizRuntime.completed = true;
     if (properties.quiz_status) quizRuntime.last_status = String(properties.quiz_status);
 

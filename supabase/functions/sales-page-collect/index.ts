@@ -9,8 +9,8 @@ const jsonHeaders = (origin: string) => ({
 const adminHeaders = { "Content-Type": "application/json", "apikey": SERVICE_KEY, "Authorization": "Bearer " + SERVICE_KEY };
 const reply = (origin: string, body: unknown, status = 200) => new Response(JSON.stringify(body), {status, headers: jsonHeaders(origin)});
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const allowedEvents = new Set(["page_view","checkout_click","cta_view","cta_click"]);
-const allowedPages = new Set(["pagina01","pagina02","pagina03","pagina04","raiox01","raiox02"]);
+const allowedEvents = new Set(["page_view","checkout_click","cta_view","cta_click","quiz_started","quiz_step_view","quiz_answer","quiz_stopped","quiz_abandoned","quiz_completed","vsl_started","vsl_offer_revealed"]);
+const allowedPages = new Set(["pagina01","pagina02","pagina03","pagina04","paginabio","vsl01v1","raioxvsl1","raiox01","raiox02"]);
 const allowedAttribution = new Set([
   "utm_source","utm_medium","utm_campaign","utm_content","utm_term","utm_id","utm_adset","utm_ad",
   "fbclid","gclid","gbraid","wbraid","ttclid","msclkid","meta_campaign_id","meta_campaign_name",
@@ -40,9 +40,36 @@ function sanitizeProperties(value: unknown): Record<string,unknown> {
   const ctaText=safeText(input.cta_text,120), ctaPosition=safeText(input.cta_position,80);
   const ctaIndex=Number(input.cta_index), ctaTotal=Number(input.cta_total);
   if(ctaText) out.cta_text=ctaText;
-  if(ctaPosition && /^cta(?:_\d{1,2})?$/.test(ctaPosition)) out.cta_position=ctaPosition;
+  if(ctaPosition && (/^cta(?:_\d{1,2})?$/.test(ctaPosition) || /^button_\d{2,3}$/.test(ctaPosition))) out.cta_position=ctaPosition;
+  const elementId=safeText(input.element_id,120), elementType=safeText(input.element_type,60), linkPath=safeText(input.link_path,120);
+  if(elementId) out.element_id=elementId;
+  if(elementType && /^[a-z0-9_-]{2,60}$/i.test(elementType)) out.element_type=elementType;
+  if(linkPath) out.link_path=linkPath;
+  const checkoutProvider=safeText(input.checkout_provider,30), checkoutDomain=safeText(input.checkout_domain,120), currency=safeText(input.currency,8);
+  const monetaryValue=Number(input.value);
+  if(checkoutProvider && /^[a-z0-9_-]{2,30}$/i.test(checkoutProvider)) out.checkout_provider=checkoutProvider;
+  if(checkoutDomain && /^[a-z0-9.-]{1,120}$/i.test(checkoutDomain)) out.checkout_domain=checkoutDomain;
+  if(currency && /^[A-Z]{3}$/.test(currency)) out.currency=currency;
+  if(Number.isFinite(monetaryValue) && monetaryValue>=0 && monetaryValue<=1000000) out.value=Math.round(monetaryValue*100)/100;
   if(Number.isInteger(ctaIndex) && ctaIndex>=0 && ctaIndex<=99) out.cta_index=ctaIndex;
   if(Number.isInteger(ctaTotal) && ctaTotal>=0 && ctaTotal<=99) out.cta_total=ctaTotal;
+
+  const stepId=safeText(input.step_id,80), stepType=safeText(input.step_type,40), answerValue=safeText(input.answer_value,160), quizStatus=safeText(input.quiz_status,40);
+  const stepIndex=Number(input.step_index), answersCount=Number(input.answers_count);
+  if(stepId) out.step_id=stepId;
+  if(stepType && /^[a-z0-9_-]{1,40}$/i.test(stepType)) out.step_type=stepType;
+  if(answerValue) out.answer_value=answerValue;
+  if(quizStatus && /^[a-z0-9_-]{1,40}$/i.test(quizStatus)) out.quiz_status=quizStatus;
+  if(Number.isInteger(stepIndex) && stepIndex>=0 && stepIndex<=99) out.step_index=stepIndex;
+  if(Number.isInteger(answersCount) && answersCount>=0 && answersCount<=99) out.answers_count=answersCount;
+  if(input.final_answers && typeof input.final_answers==="object" && !Array.isArray(input.final_answers)) {
+    const answers: Record<string,string>={};
+    for(const [k,v] of Object.entries(input.final_answers as Record<string,unknown>)) {
+      if(!/^[a-z0-9_-]{1,60}$/i.test(k)) continue;
+      const t=safeText(v,160); if(t) answers[k]=t;
+    }
+    out.final_answers=answers;
+  }
   if(input.occurred_at_normalized===true) out.occurred_at_normalized=true;
   const rawClock=safeText(input.client_occurred_at_raw,80); if(rawClock) out.client_occurred_at_raw=rawClock;
   // Browser assertions, not a server certificate of humanity. Missing stays unknown.
