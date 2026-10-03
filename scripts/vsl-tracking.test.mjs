@@ -40,12 +40,12 @@ test('quiz emits steps, answers, stopped, abandoned and completed without legacy
  assert.equal(b.sent.find(x=>x.event_name==='quiz_stopped').properties.answers_count,1);
  assert.equal(b.sent.filter(x=>x.event_name==='quiz_abandoned').length,1);
  await b.emit('raioxvsl1:quiz_event',{detail:{name:'quiz_completed',properties:{final_answers:{perfil:'pessoal'},answers_count:1}}});
- await b.emit('raioxvsl1:vsl_started');await b.emit('vsl:revealed');await b.emit('pagehide');
+ await b.emit('vsl:started');await b.emit('vsl:revealed');await b.emit('pagehide');
  assert.equal(b.sent.filter(x=>x.event_name==='quiz_abandoned').length,1);
  for(const n of ['quiz_started','quiz_step_view','quiz_answer','quiz_stopped','quiz_abandoned','quiz_completed','vsl_started','vsl_offer_revealed'])assert.ok(b.sent.some(x=>x.event_name===n),n);
 });
-test('VSL events are emitted once per session',async()=>{
- const b=browser('vsl01v1');for(let i=0;i<2;i++){await b.emit('vsl:started');await b.emit('vsl:revealed');}
+for (const page of ['vsl01v1','raioxvsl1']) test(page+': VSL events are emitted once per session',async()=>{
+ const b=browser(page);for(let i=0;i<2;i++){await b.emit('vsl:started');await b.emit('vsl:revealed');}
  for(const n of ['vsl_started','vsl_offer_revealed'])assert.equal(b.sent.filter(x=>x.event_name===n).length,1);
 });
 test('responsive local images exist, schedule is consistent and inline scripts compile',()=>{
@@ -54,6 +54,7 @@ test('responsive local images exist, schedule is consistent and inline scripts c
   for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(match[1].trim())new vm.Script(match[1]);
   if(page==='raioxvsl1'){
    assert.ok(!/(?<![\w/])assets\//.test(html));assert.ok(!/6 e 7 de outubro/i.test(html));assert.ok(html.includes('AO VIVO · TERÇA E QUARTA · 20H'));
+   assert.ok(!html.includes('raioxvsl1:vsl_started'));
    const paths=[...new Set(html.match(/\.\.\/vsl01v1\/(?:assets|fonts)\/[a-zA-Z0-9_.-]+/g))];
    for(const p of paths)assert.ok(fs.existsSync(new URL(page+'/'+p,root)),p);
   }

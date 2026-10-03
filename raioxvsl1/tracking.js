@@ -483,12 +483,21 @@
     });
   });
 
-  window.addEventListener("raioxvsl1:vsl_started", () => {
-    emitQuizEvent("vsl_started", { quiz_status: "finalizou_quiz" });
+  const emitVslEvent = (name, properties) => {
+    if (!state.vsl_event_ids) state.vsl_event_ids = {};
+    if (validUuid(state.vsl_event_ids[name])) return;
+    const eventId = uuid();
+    state.vsl_event_ids[name] = eventId;
+    saveState();
+    pushGtm(name, eventId, properties);
+    void post(basePayload(name, eventId, properties));
+  };
+  window.addEventListener("vsl:started", () => {
+    emitVslEvent("vsl_started", { quiz_status: "finalizou_quiz" });
   });
 
   window.addEventListener("vsl:revealed", () => {
-    emitQuizEvent("vsl_offer_revealed", { quiz_status: "oferta_liberada" });
+    emitVslEvent("vsl_offer_revealed", { quiz_status: "oferta_liberada" });
   });
 
   const flushQueue = async () => {
