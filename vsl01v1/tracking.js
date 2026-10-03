@@ -440,14 +440,17 @@
     if (!link.dataset.vsl01v1Cta) reindexVisibleCtas();
     let checkoutDomain = "";
     try { checkoutDomain = new URL(link.href, location.href).hostname.toLowerCase(); } catch (_) {}
+    const cta = ctaProperties(link);
     const properties = {
-      ...ctaProperties(link),
+      ...cta,
       ...qualityProperties(event, "checkout", link),
       checkout_provider: checkoutDomain.endsWith("hub.la") ? "hubla" : (checkoutDomain === "pay.hotmart.com" ? "hotmart" : "other"),
       checkout_domain: checkoutDomain,
-      element_id: link.id || properties?.cta_position || "",
+      element_id: link.id || cta.cta_position || "",
       element_type: "checkout_link",
       link_path: (() => { try { return new URL(link.href, location.href).pathname.slice(0,120); } catch (_) { return ""; } })(),
+      currency: "BRL",
+      value: 37,
     };
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
