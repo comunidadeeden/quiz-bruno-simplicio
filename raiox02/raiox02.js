@@ -445,7 +445,7 @@ function buildCheckoutUrl() {
   const pageMarker = "pg_raiox02";
   const currentContent = url.searchParams.get("utm_content") || "";
   if (!currentContent.split("~").filter(Boolean).includes(pageMarker)) url.searchParams.set("utm_content", currentContent ? currentContent + "~" + pageMarker : pageMarker);
-  url.searchParams.set("src", RX.getAttribution().src || state.utms.src || RAIOX_CONFIG.source);
+  url.searchParams.set("src", RAIOX_CONFIG.source);
   if(RX_CONFIG.correlateCheckout)url.searchParams.set("sck",RX.checkoutSck(url.searchParams.get("sck")));
 
   const lead = getCheckoutPrefill();

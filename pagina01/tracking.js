@@ -3,6 +3,8 @@
 
   const cfg = {
     pageId: "pagina01",
+    currency: "BRL",
+    value: 47,
     pageType: "sales_page",
     source: "pagina01",
     launch: "BS06OUT2026",
@@ -199,6 +201,7 @@
       rx: {
         name,
         event_id: eventId,
+        session_id: state.session_id,
         quiz_id: cfg.pageId,
         page_id: cfg.pageId,
         page_type: cfg.pageType,
@@ -218,7 +221,7 @@
           campaign_term: attribution.utm_term || "",
           campaign_id: attribution.utm_id || "",
         },
-        params: properties,
+        params: { ...properties, session_id: state.session_id },
       },
     });
   };
@@ -310,6 +313,8 @@
       cta_position: ctaPosition,
       cta_index: ctaIndex,
       cta_total: ctaTotal,
+      currency: cfg.currency,
+      value: cfg.value,
       cta_text: (link.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
     };
   };

@@ -3,6 +3,8 @@
 
   const cfg = {
     pageId: "paginabio",
+    currency: "BRL",
+    value: 47,
     pageType: "sales_page",
     source: "paginabio",
     launch: "BS06OUT2026",
@@ -199,6 +201,7 @@
       rx: {
         name,
         event_id: eventId,
+        session_id: state.session_id,
         quiz_id: cfg.pageId,
         page_id: cfg.pageId,
         page_type: cfg.pageType,
@@ -218,7 +221,7 @@
           campaign_term: attribution.utm_term || "",
           campaign_id: attribution.utm_id || "",
         },
-        params: properties,
+        params: { ...properties, session_id: state.session_id },
       },
     });
   };
@@ -277,6 +280,12 @@
           if (value && value.length <= 250) url.searchParams.set(key, value);
         }
 
+        const pageMarker = "pg_paginabio";
+        const currentContent = url.searchParams.get("utm_content") || "";
+        if (!currentContent.split("~").filter(Boolean).includes(pageMarker)) {
+          url.searchParams.set("utm_content", currentContent ? currentContent + "~" + pageMarker : pageMarker);
+        }
+
         const markerPattern = /(?:^|~)paginabio_[0-9a-f]{32}(?=~|$)/gi;
         const inboundSck = (attribution.sck || url.searchParams.get("sck") || "")
           .replace(markerPattern, "")
@@ -302,6 +311,8 @@
       cta_position: ctaPosition,
       cta_index: ctaIndex,
       cta_total: ctaTotal,
+      currency: cfg.currency,
+      value: cfg.value,
       cta_text: (link.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
     };
   };
@@ -383,9 +394,13 @@
     if (!link || !isCheckoutUrl(link.href)) return;
 
     if (!link.dataset.paginabioCta) reindexVisibleCtas();
+    let checkoutDomain = "";
+    try { checkoutDomain = new URL(link.href, location.href).hostname.toLowerCase(); } catch (_) {}
     const properties = {
       ...ctaProperties(link),
       ...qualityProperties(event, "checkout", link),
+      checkout_provider: checkoutDomain.endsWith("hub.la") ? "hubla" : (checkoutDomain === "pay.hotmart.com" ? "hotmart" : "other"),
+      checkout_domain: checkoutDomain,
     };
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);

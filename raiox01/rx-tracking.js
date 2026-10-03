@@ -128,12 +128,12 @@
   function publicEvent(name,id,details={}) {
     if(cfg.testMode) return;
     if(dlSeen.has(id+':'+name))return;dlSeen.add(id+':'+name);
-    const params={};analyticKeys.forEach(k=>{const v=details[k];if(v===undefined||v===null)return;if(typeof v==='number'&&Number.isFinite(v)||typeof v==='boolean')params[k]=v;else if(typeof v==='string'&&v.length<=100&&!v.includes('@'))params[k]=v;});
+    const params={session_id:sessionId};analyticKeys.forEach(k=>{const v=details[k];if(v===undefined||v===null)return;if(typeof v==='number'&&Number.isFinite(v)||typeof v==='boolean')params[k]=v;else if(typeof v==='string'&&v.length<=100&&!v.includes('@'))params[k]=v;});
     const traffic={},a=currentAttribution();
     const trafficKeys={campaign_source:'utm_source',campaign_medium:'utm_medium',campaign_name:'utm_campaign',campaign_content:'utm_content',campaign_term:'utm_term',campaign_id:'utm_id'};
     Object.keys(trafficKeys).forEach(k=>{const v=safeText(a[trafficKeys[k]]);if(v)traffic[k]=v;});
     w.dataLayer.push({rx:null});
-    w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,quiz_id:'raiox01',launch:cfg.campaignTag||cfg.launch,technical_launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox01',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
+    w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,session_id:sessionId,quiz_id:'raiox01',launch:cfg.campaignTag||cfg.launch,technical_launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox01',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
   }
   function payload(name,details,lead) {
     seq+=1;persistRuntime();

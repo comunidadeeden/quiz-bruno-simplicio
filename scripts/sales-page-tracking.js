@@ -201,6 +201,7 @@
       rx: {
         name,
         event_id: eventId,
+        session_id: state.session_id,
         quiz_id: "",
         page_id: pageId,
         page_type: cfg.pageType,
@@ -220,7 +221,7 @@
           campaign_term: attribution.utm_term || "",
           campaign_id: attribution.utm_id || "",
         },
-        params: properties,
+        params: { ...properties, session_id: state.session_id },
       },
     });
   };
