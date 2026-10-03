@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/:page(pagina01|pagina02|pagina03|pagina04|bio)",
+      "source": "/:page(pagina01|pagina02|pagina03|pagina04|bio|paginabio|raiox01|raiox02|raiox03|vsl01v1|raioxvsl1)",
       "destination": "/:page/",
       "permanent": true
     },
