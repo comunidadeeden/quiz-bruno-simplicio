@@ -364,6 +364,51 @@
     window.addEventListener("wheel", handler, { capture: true, passive: true });
   };
 
+  const genericButtonSeen = new WeakSet();
+  let genericButtonSequence = 0;
+
+  const genericButtonProperties = (element) => {
+    if (!element.dataset.rxButtonId) {
+      genericButtonSequence += 1;
+      element.dataset.rxButtonId = "button_" + String(genericButtonSequence).padStart(2, "0");
+    }
+    const text = (
+      element.getAttribute("aria-label")
+      || element.textContent
+      || element.getAttribute("title")
+      || "Botão"
+    ).trim().replace(/\s+/g, " ").slice(0, 120);
+    return {
+      cta_position: element.dataset.rxButtonId,
+      cta_index: genericButtonSequence,
+      cta_total: document.querySelectorAll("button").length,
+      cta_text: text,
+      element_id: element.id || element.dataset.rxButtonId,
+      element_type: element.classList.contains("vf") ? "video_testimonial" : "button",
+    };
+  };
+
+  const bindGenericButtonTracking = () => {
+    document.querySelectorAll("button").forEach((button) => {
+      if (genericButtonSeen.has(button)) return;
+      genericButtonSeen.add(button);
+      genericButtonProperties(button);
+    });
+  };
+
+  document.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!button) return;
+    bindGenericButtonTracking();
+    const properties = {
+      ...genericButtonProperties(button),
+      ...qualityProperties(event, "pointer", button),
+    };
+    const eventId = uuid();
+    pushGtm("rx_page_button_click", eventId, properties);
+    void post(basePayload("cta_click", eventId, properties));
+  }, { capture: true });
+
   const flushQueue = async () => {
     const rows = loadQueue();
     for (const item of rows) {
@@ -381,6 +426,7 @@
 
   prepareCheckoutLinks();
   observeVisibleCtas();
+  bindGenericButtonTracking();
   bindQualityEvidence();
   void flushQueue();
 
@@ -398,6 +444,9 @@
       ...qualityProperties(event, "checkout", link),
       checkout_provider: checkoutDomain.endsWith("hub.la") ? "hubla" : (checkoutDomain === "pay.hotmart.com" ? "hotmart" : "other"),
       checkout_domain: checkoutDomain,
+      element_id: link.id || properties?.cta_position || "",
+      element_type: "checkout_link",
+      link_path: (() => { try { return new URL(link.href, location.href).pathname.slice(0,120); } catch (_) { return ""; } })(),
     };
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
@@ -420,6 +469,12 @@
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => observeVisibleCtas(), 180);
+  });
+
+  window.addEventListener("vsl:revealed", () => {
+    prepareCheckoutLinks();
+    observeVisibleCtas();
+    bindGenericButtonTracking();
   });
 
   window.addEventListener("online", () => void flushQueue());
