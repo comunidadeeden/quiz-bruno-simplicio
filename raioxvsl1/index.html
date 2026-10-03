@@ -280,7 +280,7 @@ details.faq[open] .faq-sign::before{transform:translateY(2px) rotate(-135deg)}
 #pv.vsl-gated #hero-pv>section>div>*{display:none!important;visibility:hidden!important}
 #pv.vsl-gated #hero-pv>section>div>.vsl-keep{display:block!important;visibility:visible!important}
 #pv.vsl-gated .v-desk,#pv.vsl-gated .v-mob{display:none!important;visibility:hidden!important}
-</style><script src="tracking.js?v=20261003-raioxvsl1-full-v2" defer></script></head><body><!-- Google Tag Manager (noscript) --><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MZBZ9HCS"
+</style><script src="tracking.js?v=20261003-raioxvsl1-full-v3" defer></script></head><body><!-- Google Tag Manager (noscript) --><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MZBZ9HCS"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript><!-- End Google Tag Manager (noscript) --><div id="quiz">
 <div class="wrap">
   
@@ -416,6 +416,11 @@ const TITLES = {terapeuta:'Seu atendimento pode começar antes da primeira pergu
 
 /* ---------- Motor ---------- */
 const st = {i:-1, a:{}};
+function emitQuizTelemetry(name, properties={}){
+  try{
+    window.dispatchEvent(new CustomEvent('raioxvsl1:quiz_event',{detail:{name,properties}}));
+  }catch(_){}
+}
 const total = SCREENS.length;
 const $ = (s)=>document.querySelector(s);
 const screen = $('#screen');
@@ -436,6 +441,13 @@ function cover(){
 }
 function show(){
   const s=SCREENS[st.i];
+  emitQuizTelemetry('quiz_step_view',{
+    step_id:s.id||('step_'+String(st.i+1).padStart(2,'0')),
+    step_index:st.i+1,
+    step_type:s.type||'unknown',
+    answers_count:Object.keys(st.a).filter(k=>k!=='hook').length,
+    quiz_status:'em_andamento'
+  });
   if(s.type==='info'){ render(`${backBtn()}<p class="eyebrow">${s.eyebrow}</p><h2>${s.title}</h2>${s.html()}<div class="dock"><button class="cta" data-next>${s.cta}</button></div>`); return; }
   let body='';
   if(s.kind==='bodies') body=`<div class="grid g5">${CODES.map((k,i)=>`<button class="tile" data-pick="${k}">${img('corpo'+i,'Pessoa '+'ABCDE'[i])}<b>${'ABCDE'[i]}</b></button>`).join('')}</div>`;
@@ -446,6 +458,14 @@ function show(){
 }
 function pick(val,el){
   const s=SCREENS[st.i]; st.a[s.id]=val;
+  emitQuizTelemetry('quiz_answer',{
+    step_id:s.id||('step_'+String(st.i+1).padStart(2,'0')),
+    step_index:st.i+1,
+    step_type:s.kind||s.type||'question',
+    answer_value:String(val),
+    answers_count:Object.keys(st.a).filter(k=>k!=='hook').length,
+    quiz_status:'em_andamento'
+  });
   screen.querySelectorAll('[data-pick]').forEach(b=>{b.classList.toggle('picked',b===el); b.disabled=true;});
   let html='';
   if(s.kind==='bodies'){ const t=TRAITS[val]; html=fb(t.who, t.in+' Sucesso por fora não conta o que a pessoa sente por dentro.', false, 'Na Noite 1, você aprende a ver os dois lados de alguém em segundos.'); }
@@ -457,14 +477,35 @@ function pick(val,el){
 }
 function offer(){
   st.i=total;
+  emitQuizTelemetry('quiz_completed',{
+    step_id:'quiz_complete',
+    step_index:total,
+    step_type:'complete',
+    answers_count:Object.keys(st.a).filter(k=>k!=='hook').length,
+    quiz_status:'finalizou',
+    final_answers:{...st.a}
+  });
   document.getElementById('quiz').hidden=true;
-  document.getElementById('pv').hidden=false; if(window.loadVSL) window.loadVSL();
+  document.getElementById('pv').hidden=false;
+  try{window.dispatchEvent(new CustomEvent('raioxvsl1:vsl_started'));}catch(_){}
+  if(window.loadVSL) window.loadVSL();
   window.scrollTo(0,0);
   try{ window.dataLayer=window.dataLayer||[]; window.dataLayer.push({event:'quiz_complete', quiz_perfil:st.a.perfil||'', quiz_dor:st.a.dor||''}); }catch(_){}
 }
 /* ---------- Eventos ---------- */
 screen.addEventListener('click',(e)=>{
-  const h=e.target.closest('[data-hook]'); if(h){ st.a.hook=h.dataset.hook; try{ window.dataLayer=window.dataLayer||[]; window.dataLayer.push({event:'quiz_start'}); }catch(_){} st.i=0; show(); return; }
+  const h=e.target.closest('[data-hook]'); if(h){
+    st.a.hook=h.dataset.hook;
+    emitQuizTelemetry('quiz_started',{
+      step_id:'start',
+      step_index:0,
+      step_type:'start',
+      answers_count:0,
+      quiz_status:'iniciou'
+    });
+    try{ window.dataLayer=window.dataLayer||[]; window.dataLayer.push({event:'quiz_start'}); }catch(_){}
+    st.i=0; show(); return;
+  }
   const p=e.target.closest('[data-pick]'); if(p && !p.disabled){ pick(p.dataset.pick,p); return; }
   if(e.target.closest('[data-next]')){ next(); return; }
   if(e.target.closest('[data-back]')){ st.i--; show(); return; }
