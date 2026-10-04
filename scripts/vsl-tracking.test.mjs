@@ -33,6 +33,21 @@ for(const page of ['vsl01v1','raioxvsl1']) {
   const rx=b.context.dataLayer.filter(x=>x.event==='rx_event');assert.ok(rx.every(x=>x.rx.session_id===x.rx.params.session_id&&x.rx.session_id===b.sent[0].session_id));
  });
 }
+test('vsl01v1 maps desktop/mobile checkout copies to the same 10 logical CTAs',async()=>{
+ const sent=[],windowHandlers={},docHandlers={},session=new Map(),local=new Map();
+ const add=(bag)=>(name,fn)=>{(bag[name]??=[]).push(fn);};
+ const storage=map=>({getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)});
+ class Element {dataset={};href='https://pay.hub.la/XhmUngrBMRpSh984fDuG';textContent='Garanta';id='';classList={contains:()=>false};getAttribute(){return null;}getBoundingClientRect(){return {width:100,height:40};}closest(selector){return selector==='a[href]'?this:null;}}
+ const links=Array.from({length:20},()=>new Element());
+ const document={visibilityState:'visible',referrer:'',querySelectorAll:sel=>sel==='a[href]'?links:[],addEventListener:add(docHandlers)};
+ const context={document,location:{search:'',href:'https://quiz.brunosimplicio.com.br/vsl01v1/'},navigator:{webdriver:false,userActivation:{hasBeenActive:true}},performance:{now:()=>1000},crypto,URL,URLSearchParams,AbortController,Element,HTMLElement:Element,sessionStorage:storage(session),localStorage:storage(local),getComputedStyle:()=>({display:'block',visibility:'visible'}),setTimeout,clearTimeout,console,addEventListener:add(windowHandlers),fetch:async(url,opts)=>{const p=JSON.parse(opts.body);sent.push(p);return {ok:true,status:200,json:async()=>({ok:true,stored:true,event_id:p.event_id})};}};
+ context.window=context;vm.runInNewContext(fs.readFileSync(new URL('vsl01v1/tracking.js',root),'utf8'),context);
+ await new Promise(setImmediate);
+ assert.deepEqual(links.slice(0,10).map(x=>x.dataset.vsl01v1Cta),['1','2','3','4','5','6','7','8','9','10']);
+ assert.deepEqual(links.slice(10).map(x=>x.dataset.vsl01v1Cta),['1','2','3','4','5','6','7','8','9','10']);
+ assert.ok(links.every(x=>x.dataset.rxSalesPageCtaTotal==='10'));
+});
+
 test('quiz emits steps, answers, stopped, abandoned and completed without legacy duplicate names',async()=>{
  const b=browser('raioxvsl1',true);
  for(const [name,properties] of [['quiz_started',{answers_count:0}],['quiz_step_view',{step_id:'perfil',step_index:2}],['quiz_answer',{step_id:'perfil',answer_value:'terapeuta',answers_count:1}],['quiz_answer',{step_id:'perfil',answer_value:'pessoal',answers_count:1}]]) await b.emit('raioxvsl1:quiz_event',{detail:{name,properties}});
