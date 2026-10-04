@@ -254,6 +254,7 @@
   };
 
   const checkoutLinks = () => [...document.querySelectorAll('a[href]')].filter((link) => isCheckoutUrl(link.href));
+  const PHYSICAL_CTA_COUNT = 10;
 
   const isVisibleCta = (link) => {
     if (!(link instanceof HTMLElement)) return false;
@@ -264,16 +265,14 @@
 
   const reindexVisibleCtas = () => {
     const links = checkoutLinks();
-    links.forEach((link) => {
-      delete link.dataset.vsl01v1Cta;
-      delete link.dataset.rxSalesPageCtaTotal;
+    // The page renders the same 10 logical checkout CTAs twice (desktop + mobile).
+    // Keep both DOM copies mapped to the same CTA_01..CTA_10 instead of creating CTA_11..CTA_20.
+    links.forEach((link, index) => {
+      const logicalIndex = index % PHYSICAL_CTA_COUNT + 1;
+      link.dataset.vsl01v1Cta = String(logicalIndex);
+      link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
     });
-    const visible = links.filter(isVisibleCta);
-    visible.forEach((link, index) => {
-      link.dataset.vsl01v1Cta = String(index + 1);
-      link.dataset.rxSalesPageCtaTotal = String(visible.length);
-    });
-    return visible;
+    return links.filter(isVisibleCta);
   };
 
   const prepareCheckoutLinks = () => {
@@ -316,7 +315,7 @@
     const rawIndex = Number(link.dataset.vsl01v1Cta);
     const ctaIndex = Number.isInteger(rawIndex) && rawIndex > 0 ? rawIndex : 0;
     const rawTotal = Number(link.dataset.rxSalesPageCtaTotal);
-    const ctaTotal = Number.isInteger(rawTotal) && rawTotal > 0 ? rawTotal : reindexVisibleCtas().length;
+    const ctaTotal = Number.isInteger(rawTotal) && rawTotal > 0 ? rawTotal : PHYSICAL_CTA_COUNT;
     const ctaPosition = ctaIndex > 0 ? "cta_" + String(ctaIndex).padStart(2, "0") : "cta";
     return {
       cta_position: ctaPosition,
