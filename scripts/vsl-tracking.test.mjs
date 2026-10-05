@@ -86,3 +86,13 @@ test('vsl01v1 keeps 10 historical CTAs and tracks delayed post-video CTA separat
  assert.match(html,/var DELAY_SECONDS=435;/);
  assert.match(html,/html\.vsl-gated \.vsl-post-video-cta\{display:none!important;visibility:hidden!important\}/);
 });
+
+
+test('vsl01v1 pre-delay gate hides every non-hero section across wrappers',()=>{
+ const html=fs.readFileSync(new URL('vsl01v1/index.html',root),'utf8');
+ assert.match(html,/html\.vsl-gated \.v-desk section:not\(\.vsl-pre-delay-hero\)/);
+ assert.match(html,/html\.vsl-gated \.v-mob section:not\(\.vsl-pre-delay-hero\)/);
+ assert.equal((html.match(/class="vsl-pre-delay-hero"/g)||[]).length,2);
+ assert.equal((html.match(/data-vsl01v1-special-cta="post_video"/g)||[]).length,2);
+ assert.match(html,/var DELAY_SECONDS=435;/);
+});
