@@ -75,3 +75,14 @@ test('responsive local images exist, schedule is consistent and inline scripts c
   }
  }
 });
+
+
+test('vsl01v1 keeps 10 historical CTAs and tracks delayed post-video CTA separately',()=>{
+ const tracking=fs.readFileSync(new URL('vsl01v1/tracking.js',root),'utf8');
+ const html=fs.readFileSync(new URL('vsl01v1/index.html',root),'utf8');
+ assert.match(tracking,/cta_post_video/);
+ assert.match(tracking,/post_video_delayed/);
+ assert.equal((html.match(/data-vsl01v1-special-cta="post_video"/g)||[]).length,2);
+ assert.match(html,/var DELAY_SECONDS=435;/);
+ assert.match(html,/html\.vsl-gated \.vsl-post-video-cta\{display:none!important;visibility:hidden!important\}/);
+});
