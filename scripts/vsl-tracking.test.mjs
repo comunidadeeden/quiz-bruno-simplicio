@@ -105,5 +105,14 @@ test('vsl01v1 has exactly 10 historical checkout CTAs per layout plus the delaye
  const regular=checkoutAnchors.filter(x=>!x.includes('data-vsl01v1-special-cta="post_video"'));
  assert.equal(special.length,2);
  assert.equal(regular.length,20);
+ assert.equal(regular.filter(x=>x.includes('data-vsl01v1-fixed-cta="1"')).length,2);
  assert.equal(regular.length/2,10);
+});
+
+
+test('vsl01v1 preserves CTA_01 after moving it lower and maps the other historical CTAs as CTA_02..CTA_10',()=>{
+ const tracking=fs.readFileSync(new URL('vsl01v1/tracking.js',root),'utf8');
+ assert.match(tracking,/dataset\.vsl01v1FixedCta === "1"/);
+ assert.match(tracking,/link\.dataset\.vsl01v1Cta = "1"/);
+ assert.match(tracking,/index % \(PHYSICAL_CTA_COUNT - 1\) \+ 2/);
 });
