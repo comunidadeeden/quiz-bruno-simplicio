@@ -265,13 +265,21 @@
 
   const reindexVisibleCtas = () => {
     const links = checkoutLinks();
-    const regularLinks = links.filter((link) => link.dataset.vsl01v1SpecialCta !== "post_video");
     const specialLinks = links.filter((link) => link.dataset.vsl01v1SpecialCta === "post_video");
+    const fixedLinks = links.filter((link) => link.dataset.vsl01v1FixedCta === "1");
+    const regularLinks = links.filter((link) =>
+      link.dataset.vsl01v1SpecialCta !== "post_video"
+      && link.dataset.vsl01v1FixedCta !== "1"
+    );
 
-    // Preserve the historical 10 logical checkout CTAs across desktop/mobile.
-    // The new delayed CTA below the video is tracked separately and never renumbers CTA_01..CTA_10.
+    // CTA_01 used to be the second button under the VSL. It was moved lower on the page.
+    // Keep its historical identity explicit, while the remaining 9 CTAs stay CTA_02..CTA_10.
+    fixedLinks.forEach((link) => {
+      link.dataset.vsl01v1Cta = "1";
+      link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
+    });
     regularLinks.forEach((link, index) => {
-      const logicalIndex = index % PHYSICAL_CTA_COUNT + 1;
+      const logicalIndex = index % (PHYSICAL_CTA_COUNT - 1) + 2;
       link.dataset.vsl01v1Cta = String(logicalIndex);
       link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
     });
