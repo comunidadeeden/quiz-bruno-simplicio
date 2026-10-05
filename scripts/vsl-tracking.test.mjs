@@ -116,3 +116,13 @@ test('vsl01v1 preserves CTA_01 after moving it lower and maps the other historic
  assert.match(tracking,/link\.dataset\.vsl01v1Cta = "1"/);
  assert.match(tracking,/index % \(PHYSICAL_CTA_COUNT - 1\) \+ 2/);
 });
+
+
+test('vsl01v1 desktop and mobile share the same 10 logical CTA ids',()=>{
+ const tracking=fs.readFileSync(new URL('vsl01v1/tracking.js',root),'utf8');
+ assert.match(tracking,/fixedLinks\.forEach\(\(link\) => \{[\s\S]*link\.dataset\.vsl01v1Cta = "1"/);
+ assert.match(tracking,/regularLinks\.forEach\(\(link, index\) => \{[\s\S]*index % \(PHYSICAL_CTA_COUNT - 1\) \+ 2/);
+ assert.match(tracking,/const PHYSICAL_CTA_COUNT = 10/);
+ assert.match(tracking,/eventIdForCta\("view", properties\.cta_position\)/);
+ assert.match(tracking,/eventIdForCta\("click", properties\.cta_position\)/);
+});
