@@ -265,11 +265,18 @@
 
   const reindexVisibleCtas = () => {
     const links = checkoutLinks();
-    // The page renders the same 10 logical checkout CTAs twice (desktop + mobile).
-    // Keep both DOM copies mapped to the same CTA_01..CTA_10 instead of creating CTA_11..CTA_20.
-    links.forEach((link, index) => {
+    const regularLinks = links.filter((link) => link.dataset.vsl01v1SpecialCta !== "post_video");
+    const specialLinks = links.filter((link) => link.dataset.vsl01v1SpecialCta === "post_video");
+
+    // Preserve the historical 10 logical checkout CTAs across desktop/mobile.
+    // The new delayed CTA below the video is tracked separately and never renumbers CTA_01..CTA_10.
+    regularLinks.forEach((link, index) => {
       const logicalIndex = index % PHYSICAL_CTA_COUNT + 1;
       link.dataset.vsl01v1Cta = String(logicalIndex);
+      link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
+    });
+    specialLinks.forEach((link) => {
+      delete link.dataset.vsl01v1Cta;
       link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
     });
     return links.filter(isVisibleCta);
@@ -316,19 +323,25 @@
     const ctaIndex = Number.isInteger(rawIndex) && rawIndex > 0 ? rawIndex : 0;
     const rawTotal = Number(link.dataset.rxSalesPageCtaTotal);
     const ctaTotal = Number.isInteger(rawTotal) && rawTotal > 0 ? rawTotal : PHYSICAL_CTA_COUNT;
-    const ctaPosition = ctaIndex > 0 ? "cta_" + String(ctaIndex).padStart(2, "0") : "cta";
+    const isPostVideo = link.dataset.vsl01v1SpecialCta === "post_video";
+    const ctaPosition = isPostVideo
+      ? "cta_post_video"
+      : ctaIndex > 0
+        ? "cta_" + String(ctaIndex).padStart(2, "0")
+        : "cta";
     return {
       cta_position: ctaPosition,
       cta_index: ctaIndex,
       cta_total: ctaTotal,
       cta_text: (link.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
+      ...(isPostVideo ? { cta_role: "post_video_delayed" } : {}),
     };
   };
 
   const viewedCtas = new Set();
   const trackCtaView = (link) => {
     const properties = ctaProperties(link);
-    if (!properties.cta_index || viewedCtas.has(properties.cta_position)) return;
+    if ((!properties.cta_index && properties.cta_position !== "cta_post_video") || viewedCtas.has(properties.cta_position)) return;
     viewedCtas.add(properties.cta_position);
     const eventId = eventIdForCta("view", properties.cta_position);
     pushGtm("rx_sales_page_cta_view", eventId, properties);
@@ -466,7 +479,7 @@
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
 
-    if (properties.cta_index) {
+    if (properties.cta_index || properties.cta_position === "cta_post_video") {
       const ctaClickEventId = eventIdForCta("click", properties.cta_position);
       pushGtm("rx_sales_page_cta_click", ctaClickEventId, properties);
       void post(basePayload("cta_click", ctaClickEventId, properties));
