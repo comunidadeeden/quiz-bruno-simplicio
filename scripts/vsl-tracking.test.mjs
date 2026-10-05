@@ -96,3 +96,14 @@ test('vsl01v1 pre-delay gate hides every non-hero section across wrappers',()=>{
  assert.equal((html.match(/data-vsl01v1-special-cta="post_video"/g)||[]).length,2);
  assert.match(html,/var DELAY_SECONDS=435;/);
 });
+
+
+test('vsl01v1 has exactly 10 historical checkout CTAs per layout plus the delayed post-video CTA',()=>{
+ const html=fs.readFileSync(new URL('vsl01v1/index.html',root),'utf8');
+ const checkoutAnchors=[...html.matchAll(/<a\b[^>]*href="https:\/\/pay\.hub\.la\/XhmUngrBMRpSh984fDuG"[^>]*>[\s\S]*?<\/a>/g)].map(x=>x[0]);
+ const special=checkoutAnchors.filter(x=>x.includes('data-vsl01v1-special-cta="post_video"'));
+ const regular=checkoutAnchors.filter(x=>!x.includes('data-vsl01v1-special-cta="post_video"'));
+ assert.equal(special.length,2);
+ assert.equal(regular.length,20);
+ assert.equal(regular.length/2,10);
+});
