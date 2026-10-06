@@ -4,7 +4,7 @@ const RAIOX_CONFIG = {
   source: "quiz_meuraiox01",
   spreadsheetId: "1OBr2lZO_AyVS30f2_KD0qwLtrBxyY-8owmbVCq50KK4",
   sheetTabName: "Leads Meu Raio X 01", sheetGid: "23092501",
-  workshopDateText: "6 e 7 de Outubro, às 20h · ao vivo",
+  workshopDateText: "13 e 14 de Outubro, às 20h · ao vivo",
   priceText: "R$37",
   vsl: { id: "vid-6a42eb18d77f3406e43d9b7e", url: "https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6a42eb18d77f3406e43d9b7e/v4/player.js" }
 };

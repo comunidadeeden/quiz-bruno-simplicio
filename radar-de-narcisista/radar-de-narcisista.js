@@ -8,7 +8,7 @@ const RADAR_CONFIG = {
   sheetTabName: "Leads Radar de Narcisista",
   spreadsheetId: "11YDtO0DfVx9ETFHf6_cNy4N6OFq9S8j6CX7dKHHvQ_8",
   priceText: "R$67",
-  workshopDateText: "6 e 7 de Outubro, às 20h · ao vivo"
+  workshopDateText: "13 e 14 de Outubro, às 20h · ao vivo"
 };
 
 const QUALIFICATION = {
