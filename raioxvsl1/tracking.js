@@ -45,10 +45,17 @@
       session_id: uuid(),
       page_view_event_id: uuid(),
       checkout_event_id: null,
+      checkout_event_sent: false,
+      page_view_sent: false,
       quality_evidence_event_id: null,
       quality_evidence_sent: false,
       cta_view_event_ids: {},
       cta_click_event_ids: {},
+      cta_view_sent_positions: {},
+      cta_click_sent_positions: {},
+      quiz_step_views_sent: {},
+      quiz_last_answers: {},
+      quiz_once_event_ids: {},
       saved_at: Date.now(),
     };
   }
@@ -59,6 +66,13 @@
   };
   if (!state.cta_view_event_ids || typeof state.cta_view_event_ids !== "object" || Array.isArray(state.cta_view_event_ids)) state.cta_view_event_ids = {};
   if (!state.cta_click_event_ids || typeof state.cta_click_event_ids !== "object" || Array.isArray(state.cta_click_event_ids)) state.cta_click_event_ids = {};
+  if (!state.cta_view_sent_positions || typeof state.cta_view_sent_positions !== "object" || Array.isArray(state.cta_view_sent_positions)) state.cta_view_sent_positions = {};
+  if (!state.cta_click_sent_positions || typeof state.cta_click_sent_positions !== "object" || Array.isArray(state.cta_click_sent_positions)) state.cta_click_sent_positions = {};
+  if (!state.quiz_step_views_sent || typeof state.quiz_step_views_sent !== "object" || Array.isArray(state.quiz_step_views_sent)) state.quiz_step_views_sent = {};
+  if (!state.quiz_last_answers || typeof state.quiz_last_answers !== "object" || Array.isArray(state.quiz_last_answers)) state.quiz_last_answers = {};
+  if (!state.quiz_once_event_ids || typeof state.quiz_once_event_ids !== "object" || Array.isArray(state.quiz_once_event_ids)) state.quiz_once_event_ids = {};
+  state.checkout_event_sent = state.checkout_event_sent === true;
+  state.page_view_sent = state.page_view_sent === true;
   saveState();
 
   const eventIdForCta = (bucket, ctaPosition) => {
@@ -326,11 +340,15 @@
     };
   };
 
-  const viewedCtas = new Set();
+  const viewedCtas = new Set(
+    Object.keys(state.cta_view_sent_positions).filter((key) => state.cta_view_sent_positions[key] === true),
+  );
   const trackCtaView = (link) => {
     const properties = ctaProperties(link);
     if (!properties.cta_index || viewedCtas.has(properties.cta_position)) return;
     viewedCtas.add(properties.cta_position);
+    state.cta_view_sent_positions[properties.cta_position] = true;
+    saveState();
     const eventId = eventIdForCta("view", properties.cta_position);
     pushGtm("rx_sales_page_cta_view", eventId, properties);
     void post(basePayload("cta_view", eventId, properties));
@@ -412,6 +430,9 @@
   document.addEventListener("click", (event) => {
     const button = event.target instanceof Element ? event.target.closest("button") : null;
     if (!button) return;
+    // O quiz já emite eventos semânticos próprios (start, step, answer e completion).
+    // Não duplicamos esses mesmos cliques como CTA genérico.
+    if (button.closest("#quiz")) return;
     bindGenericButtonTracking();
     const properties = {
       ...genericButtonProperties(button),
@@ -432,8 +453,33 @@
   };
 
   const emitQuizEvent = (eventName, properties = {}) => {
-    const eventId = uuid();
     const props = { ...properties };
+    const stepId = String(props.step_id || "");
+
+    if (eventName === "quiz_step_view" && stepId) {
+      if (state.quiz_step_views_sent[stepId] === true) return;
+      state.quiz_step_views_sent[stepId] = true;
+      saveState();
+    }
+
+    if (eventName === "quiz_answer" && stepId) {
+      const answerValue = String(props.answer_value ?? "");
+      if (state.quiz_last_answers[stepId] === answerValue) return;
+      state.quiz_last_answers[stepId] = answerValue;
+      saveState();
+    }
+
+    if (eventName === "quiz_started" || eventName === "quiz_completed") {
+      if (validUuid(state.quiz_once_event_ids[eventName])) return;
+      state.quiz_once_event_ids[eventName] = uuid();
+      saveState();
+      const eventId = state.quiz_once_event_ids[eventName];
+      pushGtm(eventName, eventId, props);
+      void post(basePayload(eventName, eventId, props));
+      return;
+    }
+
+    const eventId = uuid();
     pushGtm(eventName, eventId, props);
     void post(basePayload(eventName, eventId, props));
   };
@@ -507,13 +553,17 @@
     }
   };
 
-  const pageViewPayload = basePayload("page_view", state.page_view_event_id, {
-    metric: "sales_page_view",
-  });
-  pushGtm("page_view", state.page_view_event_id, {
-    metric: "sales_page_view",
-  });
-  void post(pageViewPayload);
+  if (!state.page_view_sent) {
+    state.page_view_sent = true;
+    saveState();
+    const pageViewPayload = basePayload("page_view", state.page_view_event_id, {
+      metric: "sales_page_view",
+    });
+    pushGtm("page_view", state.page_view_event_id, {
+      metric: "sales_page_view",
+    });
+    void post(pageViewPayload);
+  }
 
   prepareCheckoutLinks();
   observeVisibleCtas();
@@ -545,18 +595,21 @@
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
 
-    if (properties.cta_index) {
+    if (properties.cta_index && state.cta_click_sent_positions[properties.cta_position] !== true) {
+      state.cta_click_sent_positions[properties.cta_position] = true;
+      saveState();
       const ctaClickEventId = eventIdForCta("click", properties.cta_position);
       pushGtm("rx_sales_page_cta_click", ctaClickEventId, properties);
       void post(basePayload("cta_click", ctaClickEventId, properties));
     }
 
-    if (!validUuid(state.checkout_event_id)) {
-      state.checkout_event_id = uuid();
+    if (!state.checkout_event_sent) {
+      if (!validUuid(state.checkout_event_id)) state.checkout_event_id = uuid();
+      state.checkout_event_sent = true;
       saveState();
+      pushGtm("rx_checkout_click", state.checkout_event_id, properties);
+      void post(basePayload("checkout_click", state.checkout_event_id, properties));
     }
-    pushGtm("rx_checkout_click", state.checkout_event_id, properties);
-    void post(basePayload("checkout_click", state.checkout_event_id, properties));
   }, { capture: true });
 
   let resizeTimer = 0;
