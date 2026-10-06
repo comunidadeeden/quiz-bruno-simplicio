@@ -224,12 +224,28 @@ function getTrackingParams() {
 
 function panel(content) { return `<section class="screen panel"><div class="panel-inner">${content}</div></section>`; }
 
+let resultResourcesPrepared = false;
+function prepareResultResources() {
+  if (resultResourcesPrepared) return;
+  resultResourcesPrepared = true;
+  // Download only; the original renderResult still binds and starts the player.
+  const hints = [{"href":"https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6abe93baef1e567f6a5759c7/v4/player.js","as":"script"},{"href":"https://scripts.converteai.net/lib/js/smartplayer-wc/v4/smartplayer.js","as":"script"},{"href":"https://cdn.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/6abe931f60218bc6eafa5b96/main.m3u8","as":"fetch"}];
+  for (const hint of hints) {
+    if ([...document.querySelectorAll('link[rel="preload"]')].some(link => link.href === hint.href)) continue;
+    const link = document.createElement("link");
+    link.rel = "preload"; link.href = hint.href; link.as = hint.as;
+    link.dataset.rxResultPreload = "1";
+    document.head.appendChild(link);
+  }
+}
+
 function render() {
   window.scrollTo({ top: 0, behavior: "smooth" });
   updateProgress();
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
   if(state.leadSaved)RX.saveCheckpoint(state);
+  if (state.screen === "step" && state.stepIndex >= 5) prepareResultResources();
   if (state.screen === "lead") return renderLead();
   if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
@@ -293,11 +309,12 @@ function validateLead(lead) {
 }
 
 function renderOpening() {
-  root.innerHTML = panel(`
+  if (root.dataset.rxPrerendered !== "opening-v1" || !root.querySelector("#start-button")) {
+    root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
     <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
     <figure class="raiox-hero-visual">
-      <img src="./raio-x-hero-wide.webp?v=2" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+      <img src="./raio-x-hero-960.webp" srcset="./raio-x-hero-640.webp 640w, ./raio-x-hero-960.webp 960w, ./raio-x-hero-1200.webp 1200w, ./raio-x-hero-wide.webp?v=2 1586w" sizes="(max-width: 520px) calc(100vw - 66px), 440px" fetchpriority="high" loading="eager" decoding="async" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
     <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
@@ -310,12 +327,21 @@ function renderOpening() {
     <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
     <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer Meu Teste Agora!!</button></div>
   `);
+  }
+  delete root.dataset.rxPrerendered;
+  document.querySelector("#start-button").dataset.rxReady = "1";
+  document.querySelector("#start-button").removeAttribute("aria-busy");
   document.querySelector("#start-button").addEventListener("click", () => {
     state.captureViewed = true;
     state.screen = "lead";
     RX.emit("quiz_start", {screen:"opening"});
     render();
   });
+  // A click during the non-blocking download is replayed exactly once.
+  if (window.__RX01_START_PENDING) {
+    window.__RX01_START_PENDING = false;
+    document.querySelector("#start-button").click();
+  }
 }
 
 function renderStep() {
