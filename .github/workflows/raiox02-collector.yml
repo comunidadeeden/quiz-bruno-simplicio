@@ -1,0 +1,34 @@
+name: Validar coletor RaioX02
+on:
+  push:
+    branches: [main, perf/raiox02-faster-ack-20261006]
+    paths:
+      - supabase/functions/raiox02-collect/**
+      - scripts/raiox02-collector.test.cjs
+      - .github/workflows/raiox02-collector.yml
+  pull_request:
+    paths:
+      - supabase/functions/raiox02-collect/**
+      - scripts/raiox02-collector.test.cjs
+      - .github/workflows/raiox02-collector.yml
+permissions:
+  contents: read
+jobs:
+  collector-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Contrato, durabilidade e falhas sem rede real
+        run: node --test scripts/raiox01-collector.test.cjs scripts/raiox02-collector.test.cjs
+      - name: Sintaxe das paginas preservadas
+        run: |
+          node --check raiox01/raiox01.js
+          node --check raiox01/rx-tracking.js
+          node --check raiox02/raiox02.js
+          node --check raiox02/rx-tracking.js
+          node --check raiox03/rx-tracking.js
+          git diff --check
