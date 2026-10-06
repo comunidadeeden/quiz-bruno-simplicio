@@ -217,6 +217,73 @@ function createState() {
   };
 }
 
+let leadSavePromise = null;
+const pendingOperationalSaves = new Map();
+let lastAcknowledgedCheckpoint = null;
+
+function makeAcknowledgedCheckpoint() {
+  return {
+    screen: state.screen,
+    stepIndex: state.stepIndex,
+    leadSaved: true,
+    completedSteps: [...state.completedSteps],
+    answerIndexes: {...state.answerIndexes},
+    resultViewed: state.resultViewed === true,
+    checkoutClicked: state.checkoutClicked === true
+  };
+}
+
+function acknowledgeCheckpoint(snapshot) {
+  lastAcknowledgedCheckpoint = snapshot;
+  if (state.leadSaved) RX.saveCheckpoint(snapshot);
+}
+
+function markLeadSaved() {
+  state.leadSaved = true;
+  if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
+}
+
+function queueOperationalSave(key, name, details, checkpoint) {
+  const item = {name, details, checkpoint, promise: null};
+  item.promise = RX.saveProgress(name, details)
+    .then(() => {
+      acknowledgeCheckpoint(checkpoint);
+      pendingOperationalSaves.delete(key);
+      return true;
+    })
+    .catch(() => false);
+  pendingOperationalSaves.set(key, item);
+}
+
+async function ensureLeadSaved() {
+  if (state.leadSaved) return true;
+  if (leadSavePromise) {
+    const saved = await leadSavePromise;
+    if (saved) return true;
+  }
+  if (!state.lead) throw new Error("lead_not_available");
+  await RX.saveLead(state.lead, "");
+  markLeadSaved();
+  return true;
+}
+
+async function flushOperationalSaves() {
+  for (const [key, item] of [...pendingOperationalSaves.entries()]) {
+    let saved = await item.promise;
+    if (!saved) {
+      try {
+        await RX.saveProgress(item.name, item.details);
+        saved = true;
+      } catch (_) {
+        saved = false;
+      }
+    }
+    if (!saved) throw new Error("progress_not_confirmed");
+    acknowledgeCheckpoint(item.checkpoint);
+    pendingOperationalSaves.delete(key);
+  }
+}
+
 function getTrackingParams() {
   return window.RX.getAttribution();
 }
@@ -244,7 +311,6 @@ function render() {
   updateProgress();
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
-  if(state.leadSaved)RX.saveCheckpoint(state);
   if (state.screen === "step" && state.stepIndex >= 5) prepareResultResources();
   if (state.screen === "lead") return renderLead();
   if (state.screen === "opening") return renderOpening();
@@ -287,18 +353,15 @@ async function handleLeadSubmit(event) {
   const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
-  button.disabled=true;button.textContent="Salvando...";document.querySelector("#form-error").textContent="";
-  try {
-    await RX.saveLead(lead,form.get("company_website"));
-    state.lead=lead;state.leadSaved=true;
-    saveCheckoutPrefill(lead);
-    state.screen="step";
-    render();
-  } catch(_){
-    document.querySelector("#form-error").textContent="Não foi possível confirmar o cadastro. Verifique sua conexão e tente novamente. Seus dados continuam no formulário.";
-    RX.emit("rx_form_submit_error",{error_code:"save_failed"});
-    button.disabled=false;button.textContent="Tentar novamente";
-  }
+  button.disabled=true;document.querySelector("#form-error").textContent="";
+  state.lead=lead;
+  saveCheckoutPrefill(lead);
+  const honey=form.get("company_website");
+  leadSavePromise=RX.saveLead(lead,honey)
+    .then(()=>{markLeadSaved();return true;})
+    .catch(()=>{RX.emit("rx_form_submit_error",{error_code:"save_failed"});return false;});
+  state.screen="step";
+  render();
 }
 
 function validateLead(lead) {
@@ -377,12 +440,15 @@ function renderInsight(step, progress) {
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
   RX.emit("quiz_insight_view", {step_id:step.id,step_index:state.stepIndex+1});
-  document.querySelector("#continue-button").addEventListener("click", async () => {
+  document.querySelector("#continue-button").addEventListener("click", () => {
     const button=document.querySelector("#continue-button");button.disabled=true;clearSaveError();
-    try {
-      await RX.saveProgress("quiz_insight_continue", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
-      markStepCompleted(step.id);state.stepIndex+=1;render();
-    } catch (_) {button.disabled=false;showSaveError("Não conseguimos salvar esta etapa. Verifique sua conexão e toque em Continuar novamente.");}
+    const stepIndex=state.stepIndex+1;
+    const details={step_id:step.id,step_index:stepIndex,step_type:step.type};
+    markStepCompleted(step.id);
+    state.stepIndex+=1;
+    const checkpoint=makeAcknowledgedCheckpoint();
+    queueOperationalSave("insight:"+step.id,"quiz_insight_continue",details,checkpoint);
+    render();
   });
 }
 
@@ -391,20 +457,22 @@ function showSaveError(message){
   clearSaveError();const box=document.createElement("p");box.id="quiz-save-error";box.className="error";box.setAttribute("role","alert");box.textContent=message;
   const target=document.querySelector(".panel-inner");if(target)target.appendChild(box);
 }
-async function answerStep(step, optionIndex, button) {
+function answerStep(step, optionIndex, button) {
   const option=step.options[optionIndex];
   document.querySelectorAll(".option").forEach(item=>item.disabled=true);button.classList.add("selected");clearSaveError();
+  const stepIndex=state.stepIndex+1;
   const completed=state.completedSteps.includes(step.id)?[...state.completedSteps]:[...state.completedSteps,step.id];
-  try {
-    await RX.saveProgress("quiz_answer", {question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:state.stepIndex+1,option_count:step.options.length,completed_steps:completed});
-    if(option.profile)state.profile=option.profile;
-    state.answers[step.id]=option.label;state.answerIndexes[step.id]=optionIndex;markStepCompleted(step.id);
-    RX.emit("quiz_step_complete",{step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
-    state.stepIndex+=1;if(state.stepIndex>=STEPS.length)state.screen="loading";render();
-  } catch (_) {
-    document.querySelectorAll(".option").forEach(item=>{item.disabled=false;item.classList.remove("selected");});
-    showSaveError("Não conseguimos salvar sua resposta. Verifique sua conexão e selecione a opção novamente.");
-  }
+  const details={question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:stepIndex,option_count:step.options.length,completed_steps:completed};
+  if(option.profile)state.profile=option.profile;
+  state.answers[step.id]=option.label;
+  state.answerIndexes[step.id]=optionIndex;
+  markStepCompleted(step.id);
+  const checkpoint=makeAcknowledgedCheckpoint();
+  queueOperationalSave("answer:"+step.id,"quiz_answer",details,checkpoint);
+  RX.emit("quiz_step_complete",{step_id:step.id,step_index:stepIndex,step_type:step.type});
+  state.stepIndex+=1;
+  if(state.stepIndex>=STEPS.length)state.screen="loading";
+  render();
 }
 
 let completionInFlight=false;
@@ -412,10 +480,12 @@ async function renderLoading() {
   if(completionInFlight)return;completionInFlight=true;
   root.innerHTML=panel(`<div class="loading"><div class="loading-ring" aria-hidden="true"></div><h2>Organizando seu resultado...</h2><p>Estamos conectando suas respostas com o caminho mais coerente para você.</p></div>`);
   try {
+    await ensureLeadSaved();
+    await flushOperationalSaves();
     const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};});
     const result=await RX.saveProgress("quiz_complete",{step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]});
     if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==5 || Number(result.quiz_status?.etapas_concluidas)!==7))throw new Error("completion_not_confirmed");
-    state.screen="result";state.resultViewed=true;completionInFlight=false;render();
+    state.screen="result";state.resultViewed=true;state.leadSaved=true;RX.saveCheckpoint(state);completionInFlight=false;render();
   } catch (_) {
     completionInFlight=false;
     root.innerHTML=panel(`<h2>Precisamos confirmar suas respostas.</h2><p>Não foi possível concluir a gravação agora. Suas respostas continuam nesta página. Toque abaixo para tentar novamente.</p><button class="button button-primary" id="retry-completion" type="button">Tentar salvar novamente</button>`);
