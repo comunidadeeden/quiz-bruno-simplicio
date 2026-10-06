@@ -1,0 +1,106 @@
+name: Validar primeira tela RaioX01
+on:
+  push:
+    branches: [perf/raiox01-initial-paint-20261006, main]
+    paths: ['raiox01/**', 'scripts/prepare-raiox01-performance.cjs', 'scripts/raiox01-performance.test.cjs', '.github/workflows/raiox01-performance.yml']
+  pull_request:
+    paths: ['raiox01/**', 'scripts/prepare-raiox01-performance.cjs', 'scripts/raiox01-performance.test.cjs', '.github/workflows/raiox01-performance.yml']
+permissions:
+  contents: read
+concurrency:
+  group: raiox01-paint-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prepare-feature-only:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/perf/raiox01-initial-paint-20261006' && !contains(github.event.head_commit.message, '[generated]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Preparar dependencias isoladas e referencia imutavel
+        run: |
+          npm install --prefix /tmp/rx-deps --no-audit --no-fund sharp@0.34.5 playwright-core@1.55.1 @sparticuz/chromium@138.0.2
+          git fetch --depth=1 origin c162877c2515c1bd91940407a8e42fe08bb395d3
+          mkdir -p /tmp/rx01-baseline
+          git archive c162877c2515c1bd91940407a8e42fe08bb395d3 raiox01 raiox02 scripts/checkout-quality.js supabase/functions/raiox01-collect supabase/functions/raiox02-collect | tar -x -C /tmp/rx01-baseline
+      - name: Gerar somente arquivos autorizados do RaioX01
+        env:
+          NODE_PATH: /tmp/rx-deps/node_modules
+        run: node scripts/prepare-raiox01-performance.cjs . > /tmp/rx-build.json
+      - name: Contratos e jornada completa sem trafego real
+        env:
+          NODE_PATH: /tmp/rx-deps/node_modules
+          RX_RESULT_PATH: /tmp/rx-browser.json
+          RX_BASELINE_ROOT: /tmp/rx01-baseline
+          FONTCONFIG_PATH: /tmp/fonts
+        run: |
+          node --check raiox01/raiox01.js
+          node --check raiox01/gtm-bootstrap.js
+          node --test scripts/raiox01-collector.test.cjs scripts/raiox02-collector.test.cjs > /tmp/rx-contracts.tap
+          node scripts/raiox01-performance.test.cjs
+          git diff --check
+      - name: Salvar arquivos testados exclusivamente na branch de trabalho
+        run: |
+          test '${{ github.ref }}' = 'refs/heads/perf/raiox01-initial-paint-20261006'
+          python3 - <<'PY'
+          import subprocess
+          allowed={'raiox01/index.html','raiox01/raiox01.js','raiox01/gtm-bootstrap.js','raiox01/raiox01.bundle.css','raiox01/raio-x-hero-640.webp','raiox01/raio-x-hero-960.webp','raiox01/raio-x-hero-1200.webp'}
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard'],text=True).splitlines())
+          assert changed == allowed, f'Unexpected file changes: {changed.symmetric_difference(allowed)}'
+          PY
+          git add raiox01/index.html raiox01/raiox01.js raiox01/gtm-bootstrap.js raiox01/raiox01.bundle.css raiox01/raio-x-hero-640.webp raiox01/raio-x-hero-960.webp raiox01/raio-x-hero-1200.webp
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'perf(raiox01): validated initial HTML, CSS and responsive images [generated]'
+          git push origin HEAD:perf/raiox01-initial-paint-20261006
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raiox01-preparation-evidence
+          path: |
+            /tmp/rx-build.json
+            /tmp/rx-browser.json
+            /tmp/rx-contracts.tap
+  verify-published-files:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Preparar dependencias e referencia imutavel
+        run: |
+          npm install --prefix /tmp/rx-deps --no-audit --no-fund playwright-core@1.55.1 @sparticuz/chromium@138.0.2
+          git fetch --depth=1 origin c162877c2515c1bd91940407a8e42fe08bb395d3
+          mkdir -p /tmp/rx01-baseline
+          git archive c162877c2515c1bd91940407a8e42fe08bb395d3 raiox01 raiox02 scripts/checkout-quality.js supabase/functions/raiox01-collect supabase/functions/raiox02-collect | tar -x -C /tmp/rx01-baseline
+      - name: Validar os arquivos efetivos, sem reconstruir ou publicar
+        env:
+          NODE_PATH: /tmp/rx-deps/node_modules
+          RX_RESULT_PATH: /tmp/rx-browser.json
+          RX_BASELINE_ROOT: /tmp/rx01-baseline
+          FONTCONFIG_PATH: /tmp/fonts
+        run: |
+          node --check raiox01/raiox01.js
+          node --check raiox01/gtm-bootstrap.js
+          node --test scripts/raiox01-collector.test.cjs scripts/raiox02-collector.test.cjs > /tmp/rx-contracts.tap
+          node scripts/raiox01-performance.test.cjs
+          git diff --check
+          test -z "$(git status --porcelain)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raiox01-verified-evidence
+          path: |
+            /tmp/rx-browser.json
+            /tmp/rx-contracts.tap
