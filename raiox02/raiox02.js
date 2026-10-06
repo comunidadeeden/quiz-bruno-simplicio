@@ -432,21 +432,34 @@ function answerStep(step, optionIndex, button) {
 }
 
 let completionInFlight=false;
-async function renderLoading() {
-  if(completionInFlight)return;completionInFlight=true;
-  root.innerHTML=panel(`<div class="loading"><div class="loading-ring" aria-hidden="true"></div><h2>Organizando seu resultado...</h2><p>Estamos conectando suas respostas com o caminho mais coerente para você.</p></div>`);
+async function finalizeQuizInBackground() {
+  if(completionInFlight)return;
+  completionInFlight=true;
   try {
     await ensureLeadSaved();
     await flushOperationalSaves();
-    const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};});
+    const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{
+      const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];
+      return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};
+    });
     const result=await RX.saveProgress("quiz_complete",{step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]});
     if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==5 || Number(result.quiz_status?.etapas_concluidas)!==7))throw new Error("completion_not_confirmed");
-    state.screen="result";state.resultViewed=true;state.leadSaved=true;RX.saveCheckpoint(state);completionInFlight=false;render();
+    state.leadSaved=true;
+    RX.saveCheckpoint({...state,screen:"result",resultViewed:true});
   } catch (_) {
+    // A UI permanece livre. A fila usa IDs estáveis e o fluxo volta a tentar
+    // em recarregamento/retorno de conexão sem bloquear o usuário.
+    window.addEventListener("online", finalizeQuizInBackground, {once:true});
+  } finally {
     completionInFlight=false;
-    root.innerHTML=panel(`<h2>Precisamos confirmar suas respostas.</h2><p>Não foi possível concluir a gravação agora. Suas respostas continuam nesta página. Toque abaixo para tentar novamente.</p><button class="button button-primary" id="retry-completion" type="button">Tentar salvar novamente</button>`);
-    document.querySelector("#retry-completion").addEventListener("click",renderLoading);
   }
+}
+
+function renderLoading() {
+  state.screen="result";
+  state.resultViewed=true;
+  render();
+  void finalizeQuizInBackground();
 }
 
 function renderResult() {
