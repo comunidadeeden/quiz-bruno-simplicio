@@ -218,6 +218,12 @@ function createState() {
 }
 
 let leadSavePromise = null;
+let leadSaveInFlight = false;
+let leadRetryTimer = null;
+let leadRetryAttempt = 0;
+let leadSaveErrorReported = false;
+let leadPersistenceBlocked = false;
+const LEAD_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000, 60000];
 const pendingOperationalSaves = new Map();
 let lastAcknowledgedCheckpoint = null;
 
@@ -238,14 +244,58 @@ function acknowledgeCheckpoint(snapshot) {
   if (state.leadSaved) RX.saveCheckpoint(snapshot);
 }
 
+function clearLeadRetryTimer() {
+  if (leadRetryTimer) window.clearTimeout(leadRetryTimer);
+  leadRetryTimer = null;
+}
+
 function markLeadSaved() {
   state.leadSaved = true;
+  clearLeadRetryTimer();
+  leadRetryAttempt = 0;
   if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
+}
+
+function scheduleLeadRetry() {
+  if (state.leadSaved || leadPersistenceBlocked || !state.lead || leadRetryTimer) return;
+  if (leadRetryAttempt >= LEAD_RETRY_DELAYS_MS.length) return;
+  const delay = LEAD_RETRY_DELAYS_MS[leadRetryAttempt++];
+  leadRetryTimer = window.setTimeout(() => {
+    leadRetryTimer = null;
+    void attemptLeadSave("");
+  }, delay);
+}
+
+function attemptLeadSave(honey = "") {
+  if (state.leadSaved) return Promise.resolve(true);
+  if (String(honey || "").trim()) leadPersistenceBlocked = true;
+  if (leadPersistenceBlocked || !state.lead) return Promise.resolve(false);
+  if (leadSaveInFlight && leadSavePromise) return leadSavePromise;
+
+  leadSaveInFlight = true;
+  leadSavePromise = RX.saveLead(state.lead, honey)
+    .then(() => {
+      markLeadSaved();
+      return true;
+    })
+    .catch(() => {
+      if (!leadSaveErrorReported) {
+        leadSaveErrorReported = true;
+        RX.emit("rx_form_submit_error", {error_code:"save_failed"});
+      }
+      scheduleLeadRetry();
+      return false;
+    })
+    .finally(() => {
+      leadSaveInFlight = false;
+    });
+  return leadSavePromise;
 }
 
 function queueOperationalSave(key, name, details, checkpoint) {
   const item = {name, details, checkpoint, promise: null};
-  item.promise = RX.saveProgress(name, details)
+  item.promise = ensureLeadSaved()
+    .then(() => RX.saveProgress(name, details))
     .then(() => {
       acknowledgeCheckpoint(checkpoint);
       pendingOperationalSaves.delete(key);
@@ -257,21 +307,24 @@ function queueOperationalSave(key, name, details, checkpoint) {
 
 async function ensureLeadSaved() {
   if (state.leadSaved) return true;
+  if (leadPersistenceBlocked) throw new Error("lead_not_available");
   if (leadSavePromise) {
     const saved = await leadSavePromise;
     if (saved) return true;
   }
   if (!state.lead) throw new Error("lead_not_available");
-  await RX.saveLead(state.lead, "");
-  markLeadSaved();
+  const saved = await attemptLeadSave("");
+  if (!saved) throw new Error("lead_not_confirmed");
   return true;
 }
 
 async function flushOperationalSaves() {
+  await ensureLeadSaved();
   for (const [key, item] of [...pendingOperationalSaves.entries()]) {
     let saved = await item.promise;
     if (!saved) {
       try {
+        await ensureLeadSaved();
         await RX.saveProgress(item.name, item.details);
         saved = true;
       } catch (_) {
@@ -283,6 +336,19 @@ async function flushOperationalSaves() {
     pendingOperationalSaves.delete(key);
   }
 }
+
+window.addEventListener("online", () => {
+  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
+  if (pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && state.lead && !state.leadSaved && !leadPersistenceBlocked) {
+    void attemptLeadSave("");
+  }
+});
+window.addEventListener("pagehide", () => {
+  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
+});
 
 function getTrackingParams() {
   return window.RX.getAttribution();
@@ -319,9 +385,7 @@ async function handleLeadSubmit(event) {
   state.lead=lead;
   saveCheckoutPrefill(lead);
   const honey=form.get("company_website");
-  leadSavePromise=RX.saveLead(lead,honey)
-    .then(()=>{markLeadSaved();return true;})
-    .catch(()=>{RX.emit("rx_form_submit_error",{error_code:"save_failed"});return false;});
+  void attemptLeadSave(honey);
   RX.emit("quiz_start", {screen:"opening"});
   state.screen="step";
   render();
