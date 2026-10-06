@@ -28,7 +28,8 @@ for(const page of ['vsl01v1','raioxvsl1']) {
   const b=browser(page);await new Promise(setImmediate);
   const u=new URL(b.link.href);assert.equal(u.searchParams.get('src'),page);assert.equal(u.searchParams.get('utm_content'),'original~pg_'+page);assert.match(u.searchParams.get('sck'),new RegExp('^'+page+'_[a-f0-9]{32}$'));
   await b.emitDoc('click',{target:b.link,isTrusted:false});await b.emitDoc('click',{target:b.link,isTrusted:false});
-  const checks=b.sent.filter(x=>x.event_name==='checkout_click');assert.equal(checks.length,2);assert.equal(checks[0].event_id,checks[1].event_id);assert.equal(checks[0].properties.value,37);
+  const checks=b.sent.filter(x=>x.event_name==='checkout_click');assert.equal(checks.length,1);assert.equal(checks[0].properties.value,37);
+  const ctaClicks=b.sent.filter(x=>x.event_name==='cta_click'&&x.properties?.cta_index>0);assert.equal(ctaClicks.length,1);
   assert.ok(!b.sent.some(x=>/purchase/i.test(x.event_name)));
   const rx=b.context.dataLayer.filter(x=>x.event==='rx_event');assert.ok(rx.every(x=>x.rx.session_id===x.rx.params.session_id&&x.rx.session_id===b.sent[0].session_id));
  });
@@ -50,7 +51,18 @@ test('vsl01v1 maps desktop/mobile checkout copies to the same 10 logical CTAs',a
 
 test('quiz emits steps, answers, stopped, abandoned and completed without legacy duplicate names',async()=>{
  const b=browser('raioxvsl1',true);
- for(const [name,properties] of [['quiz_started',{answers_count:0}],['quiz_step_view',{step_id:'perfil',step_index:2}],['quiz_answer',{step_id:'perfil',answer_value:'terapeuta',answers_count:1}],['quiz_answer',{step_id:'perfil',answer_value:'pessoal',answers_count:1}]]) await b.emit('raioxvsl1:quiz_event',{detail:{name,properties}});
+ for(const [name,properties] of [
+  ['quiz_started',{answers_count:0}],
+  ['quiz_started',{answers_count:0}],
+  ['quiz_step_view',{step_id:'perfil',step_index:2}],
+  ['quiz_step_view',{step_id:'perfil',step_index:2}],
+  ['quiz_answer',{step_id:'perfil',answer_value:'terapeuta',answers_count:1}],
+  ['quiz_answer',{step_id:'perfil',answer_value:'terapeuta',answers_count:1}],
+  ['quiz_answer',{step_id:'perfil',answer_value:'pessoal',answers_count:1}]
+ ]) await b.emit('raioxvsl1:quiz_event',{detail:{name,properties}});
+ assert.equal(b.sent.filter(x=>x.event_name==='quiz_started').length,1);
+ assert.equal(b.sent.filter(x=>x.event_name==='quiz_step_view').length,1);
+ assert.equal(b.sent.filter(x=>x.event_name==='quiz_answer').length,2);
  b.context.document.visibilityState='hidden';await b.emitDoc('visibilitychange');await b.emit('pagehide');
  assert.equal(b.sent.find(x=>x.event_name==='quiz_stopped').properties.answers_count,1);
  assert.equal(b.sent.filter(x=>x.event_name==='quiz_abandoned').length,1);
@@ -125,4 +137,14 @@ test('vsl01v1 desktop and mobile share the same 10 logical CTA ids',()=>{
  assert.match(tracking,/const PHYSICAL_CTA_COUNT = 10/);
  assert.match(tracking,/eventIdForCta\("view", properties\.cta_position\)/);
  assert.match(tracking,/eventIdForCta\("click", properties\.cta_position\)/);
+});
+
+test('raioxvsl1 does not double-count quiz buttons as generic CTA events',()=>{
+ const tracking=fs.readFileSync(new URL('raioxvsl1/tracking.js',root),'utf8');
+ assert.match(tracking,/if \(button\.closest\("#quiz"\)\) return;/);
+ assert.match(tracking,/quiz_step_views_sent/);
+ assert.match(tracking,/quiz_last_answers/);
+ assert.match(tracking,/cta_click_sent_positions/);
+ assert.match(tracking,/checkout_event_sent/);
+ assert.match(tracking,/page_view_sent/);
 });
