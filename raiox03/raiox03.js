@@ -568,12 +568,23 @@ function renderLead() {
       </div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar meu Raio-X</button></div>
+      <div class="fixed-cta"><button class="button button-primary" id="lead-submit-button" type="submit">Continuar meu Raio-X</button></div>
     </form>
     <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
-  document.querySelector("#lead-form").addEventListener("submit", handleLeadSubmit);
-  document.querySelector("#lead-form").addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
+  const leadForm=document.querySelector("#lead-form");
+  const leadSubmitButton=document.querySelector("#lead-submit-button");
+  leadForm.addEventListener("submit", handleLeadSubmit);
+  leadForm.addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
+  leadSubmitButton.addEventListener("pointerdown", (event) => {
+    if (leadSubmitButton.disabled) return;
+    if (event.pointerType === "touch" || event.pointerType === "pen") {
+      event.preventDefault();
+      const active=document.activeElement;
+      if(active && typeof active.blur==="function") active.blur();
+      leadForm.requestSubmit(leadSubmitButton);
+    }
+  });
   RX.emit("rx_form_view", {screen:"lead", step_index:state.stepIndex+1});
 }
 
