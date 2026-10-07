@@ -543,7 +543,29 @@ function renderLead() {
     </div>
     <form class="form" id="lead-form" novalidate>
       <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="text" inputmode="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field"><label for="phone">Telefone (WhatsApp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="field">
+        <label for="phone">Telefone (WhatsApp):</label>
+        <div class="phone-field">
+          <select id="country-code" name="country_code" aria-label="País e código DDI">
+            <option value="+55" selected>🇧🇷 Brasil +55</option>
+            <option value="+351">🇵🇹 Portugal +351</option>
+            <option value="+1">🇺🇸 EUA/Canadá +1</option>
+            <option value="+34">🇪🇸 Espanha +34</option>
+            <option value="+54">🇦🇷 Argentina +54</option>
+            <option value="+56">🇨🇱 Chile +56</option>
+            <option value="+598">🇺🇾 Uruguai +598</option>
+            <option value="+595">🇵🇾 Paraguai +595</option>
+            <option value="+52">🇲🇽 México +52</option>
+            <option value="+44">🇬🇧 Reino Unido +44</option>
+            <option value="+39">🇮🇹 Itália +39</option>
+            <option value="+33">🇫🇷 França +33</option>
+            <option value="+49">🇩🇪 Alemanha +49</option>
+            <option value="+41">🇨🇭 Suíça +41</option>
+            <option value="+43">🇦🇹 Áustria +43</option>
+          </select>
+          <input id="phone" name="phone" type="tel" inputmode="tel" maxlength="24" autocomplete="tel" placeholder="38 99864-4885" value="" required>
+        </div>
+      </div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
       <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar meu Raio-X</button></div>
@@ -561,7 +583,11 @@ async function handleLeadSubmit(event) {
   if(button.disabled)return;
   RX.emit("rx_form_submit_attempt", {screen:"lead", step_index:state.stepIndex+1});
   const form=new FormData(element);
-  const lead={name:"",email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
+  const rawPhone=String(form.get("phone")||"").trim();
+  const countryCode=String(form.get("country_code")||"+55").trim();
+  const phoneDigits=rawPhone.replace(/\D/g,"");
+  const combinedPhone=rawPhone.startsWith("+") ? rawPhone : countryCode + phoneDigits;
+  const lead={name:"",email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(combinedPhone),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
   button.disabled=true;document.querySelector("#form-error").textContent="";
@@ -577,7 +603,7 @@ async function handleLeadSubmit(event) {
 function validateLead(lead) {
   if(!lead.email)return {code:"email_required",message:"Informe seu e-mail para continuar."};
   if(lead.email.length>254)return {code:"email_too_long",message:"O e-mail informado é muito longo."};
-  if(!/^\\+[1-9]\\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
+  if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Confira o país e informe seu WhatsApp com DDD."};
   return null;
 }
 
