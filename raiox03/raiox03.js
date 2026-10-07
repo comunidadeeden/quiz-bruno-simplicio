@@ -866,6 +866,11 @@ function renderResult() {
         </vturb-smartplayer>
       </div>
       <div class="fixed-cta result-fixed-cta" id="checkout-cta">
+        <div class="checkout-offer-copy">
+          <span>Quer aprender a fazer essa leitura na prática?</span>
+          <strong>No Workshop Raio-X Humano, você vai aprender ao vivo onde olhar e o que observar no rosto e no corpo.</strong>
+          <p>Escolha sua vaga e continue para o checkout.</p>
+        </div>
         <div class="lot-grid" aria-label="Lotes do Workshop Raio-X Humano">
           <div class="lot-card lot-card-current">
             <span class="lot-label">1º lote</span>
