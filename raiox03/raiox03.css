@@ -2064,3 +2064,94 @@ input:focus-visible{
     animation:none !important;
   }
 }
+
+
+/* RaioX03 · todos os botões do quiz em verde */
+.quiz-root .button,
+.quiz-root button.button,
+.fixed-cta .button{
+  background:#1A8A40 !important;
+  color:#FFFFFF !important;
+  border-color:#1A8A40 !important;
+  box-shadow:0 5px 0 #0F5426,0 12px 24px rgba(26,138,64,.18) !important;
+}
+
+.quiz-root .button:hover,
+.quiz-root button.button:hover,
+.fixed-cta .button:hover{
+  background:#157236 !important;
+  border-color:#157236 !important;
+}
+
+.quiz-root .button:focus-visible,
+.quiz-root button.button:focus-visible,
+.fixed-cta .button:focus-visible{
+  outline:3px solid rgba(26,138,64,.28) !important;
+  outline-offset:3px;
+}
+
+.quiz-root .button[disabled],
+.quiz-root button.button[disabled],
+.fixed-cta .button[disabled]{
+  background:#A7CDB3 !important;
+  color:#F7FFF9 !important;
+  border-color:#A7CDB3 !important;
+  box-shadow:none !important;
+  opacity:.72;
+}
+
+/* As respostas continuam legíveis: verde suave até serem selecionadas. */
+.quiz-root .option{
+  border-color:#9FC9AB !important;
+  background:#F0F8F2 !important;
+  color:#183821 !important;
+  box-shadow:0 2px 0 rgba(26,138,64,.10) !important;
+}
+
+.quiz-root .option::before{
+  border-color:#5BA875 !important;
+  background:#FFFFFF !important;
+}
+
+.quiz-root .option:hover{
+  border-color:#1A8A40 !important;
+  background:#E4F4E8 !important;
+  color:#12331C !important;
+}
+
+.quiz-root .option:hover::before{
+  border-color:#1A8A40 !important;
+}
+
+.quiz-root .option.selected{
+  border-color:#1A8A40 !important;
+  background:#DDF2E3 !important;
+  color:#0F3B1D !important;
+  box-shadow:0 0 0 3px rgba(26,138,64,.10) !important;
+}
+
+.quiz-root .option.selected::before{
+  border-color:#1A8A40 !important;
+  background:#1A8A40 !important;
+  box-shadow:inset 0 0 0 4px #FFFFFF !important;
+}
+
+.quiz-root .option:focus-visible{
+  outline:3px solid rgba(26,138,64,.25) !important;
+  outline-offset:3px;
+}
+
+.quiz-root .option:disabled:not(.selected){
+  opacity:.62;
+}
+
+/* CTAs principais mantêm o pulso; botões comuns ficam estáveis. */
+#start-button,
+#checkout-button{
+  animation:raiox-green-pulse 1.55s ease-in-out infinite !important;
+}
+
+#continue-button,
+.question-continue{
+  animation:none !important;
+}
