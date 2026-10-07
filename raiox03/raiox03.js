@@ -243,7 +243,7 @@ if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]
     for(const step of STEPS.filter(s=>s.type==='question')){
       const idx=state.answerIndexes[step.id];if(Number.isInteger(idx)&&step.options[idx])state.answers[step.id]=step.options[idx].label;
     }
-    state.profile=STEPS[0].options[state.answerIndexes.profile]?.profile||'';
+    state.profile=STEPS.find(s=>s.id==='situation')?.options[state.answerIndexes.situation]?.profile||'';
   }
 }
 
@@ -406,6 +406,83 @@ function getTrackingParams() {
 }
 
 
+const QUESTION_STEPS = STEPS.filter(step => step.type === "question");
+const INSIGHT_STEPS = STEPS.filter(step => step.type === "insight");
+
+function answeredQuestionCount() {
+  return QUESTION_STEPS.filter(step => state.completedSteps.includes(step.id)).length;
+}
+
+function questionNumberFor(step) {
+  return QUESTION_STEPS.findIndex(item => item.id === step.id) + 1;
+}
+
+function insightNumberFor(step) {
+  return INSIGHT_STEPS.findIndex(item => item.id === step.id) + 1;
+}
+
+function questionProgressPercent() {
+  return Math.round((answeredQuestionCount() / QUESTION_STEPS.length) * 100);
+}
+
+function responseValue(id, fallback = "Ainda não definido") {
+  return state.answers[id] || fallback;
+}
+
+function deriveResultProfile() {
+  const step = STEPS.find(item => item.id === "situation");
+  const optionIndex = state.answerIndexes.situation;
+  const option = Number.isInteger(optionIndex) ? step?.options?.[optionIndex] : null;
+  return option?.profile || state.profile || "vida_pessoal";
+}
+
+function confirmationItems(stepId) {
+  if (stepId === "insight_precision") {
+    return [
+      {label:"Onde essa leitura teria mais valor agora", value:responseValue("situation")},
+      {label:"O que mais pesa quando você julga alguém errado", value:responseValue("judgment_error")}
+    ];
+  }
+  if (stepId === "insight_signals") {
+    return [
+      {label:"Onde seu olhar vai primeiro", value:responseValue("attention_focus")},
+      {label:"Onde identificar padrões teria mais valor", value:responseValue("emotional_value")},
+      {label:"O padrão que mais acontece hoje", value:responseValue("recurring_signal")}
+    ];
+  }
+  return [
+    {label:"O que você mais quer descobrir", value:responseValue("desired_discovery")},
+    {label:"O primeiro resultado que você busca", value:responseValue("first_result")},
+    {label:"Sobre ignorar sua percepção", value:responseValue("intuition_ignored")}
+  ];
+}
+
+function renderConfirmationItems(items) {
+  return items.map(item => `
+    <div class="confirmation-answer">
+      <span>${escapeHtml(item.label)}</span>
+      <strong>${escapeHtml(item.value)}</strong>
+    </div>
+  `).join("");
+}
+
+function resultHighlights() {
+  return [
+    {label:"Onde essa habilidade teria mais valor", value:responseValue("emotional_value", responseValue("situation"))},
+    {label:"O que você mais quer identificar", value:responseValue("desired_discovery")},
+    {label:"Primeiro resultado que você procura", value:responseValue("first_result")}
+  ];
+}
+
+function renderResultHighlights() {
+  return resultHighlights().map(item => `
+    <div class="result-highlight">
+      <span>${escapeHtml(item.label)}</span>
+      <strong>${escapeHtml(item.value)}</strong>
+    </div>
+  `).join("");
+}
+
 function panel(content) { return `<section class="screen panel"><div class="panel-inner">${content}</div></section>`; }
 
 let resultResourcesPrepared = false;
@@ -437,7 +514,18 @@ function render() {
 }
 
 function updateProgress() {
-  progressLabel.textContent = state.screen === "step" ? `Etapa ${state.stepIndex + 1} de ${STEPS.length}` : "";
+  if (state.screen !== "step") {
+    progressLabel.textContent = "";
+    return;
+  }
+  const step = STEPS[state.stepIndex];
+  if (!step) {
+    progressLabel.textContent = "";
+    return;
+  }
+  progressLabel.textContent = step.type === "question"
+    ? `Pergunta ${questionNumberFor(step)} de ${QUESTION_STEPS.length}`
+    : `Análise ${insightNumberFor(step)} de ${INSIGHT_STEPS.length}`;
 }
 
 function renderLead() {
@@ -524,12 +612,17 @@ function renderOpening() {
 
 function renderStep() {
   const step = STEPS[state.stepIndex];
-  const progress = ((state.stepIndex + 1) / STEPS.length) * 100;
+  const qNumber = questionNumberFor(step);
+  const progress = Math.max(0, Math.round(((qNumber - 1) / QUESTION_STEPS.length) * 100));
   RX.emit("quiz_step_view", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
-  if (step.type === "insight") return renderInsight(step, progress);
+  if (step.type === "insight") return renderInsight(step, questionProgressPercent());
   root.innerHTML = panel(`
+    <div class="quiz-progress-head">
+      <span>Pergunta ${qNumber} de ${QUESTION_STEPS.length}</span>
+      <strong>${progress}% concluído</strong>
+    </div>
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
-    <div class="question-number">${step.label} · etapa ${state.stepIndex + 1} de ${STEPS.length}</div>
+    <div class="question-number">${step.label}</div>
     <h2 class="question-title">${step.text}</h2>
     <div class="options" role="radiogroup" aria-label="${step.text}">
       ${step.options.map((option, index) => `<button class="option" type="button" data-index="${index}">${option.label}</button>`).join("")}
@@ -543,15 +636,23 @@ function markStepCompleted(stepId) {
 }
 
 function renderInsight(step, progress) {
+  const analysisNumber = insightNumberFor(step);
+  const items = confirmationItems(step.id);
   root.innerHTML = panel(`
+    <div class="quiz-progress-head">
+      <span>Análise ${analysisNumber} de ${INSIGHT_STEPS.length}</span>
+      <strong>${progress}% do quiz respondido</strong>
+    </div>
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
     <span class="eyebrow">${step.eyebrow || "Confirmação"}</span>
-    <div class="insight-progress-note">${step.progressText || ""}</div>
     <h2 class="insight-title">${step.title}</h2>
-    <div class="insight-card">
-      <p class="insight-body">${step.body}</p>
-      <ul class="opening-list insight-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
-      <p class="insight-footer"><strong>${step.footer}</strong></p>
+    <p class="insight-body confirmation-lead">${step.body}</p>
+    <div class="confirmation-grid">
+      ${renderConfirmationItems(items)}
+    </div>
+    <div class="confirmation-next">
+      <span>O que isso mostra até aqui</span>
+      <strong>${step.footer}</strong>
     </div>
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
@@ -640,14 +741,21 @@ function renderLoading() {
   root.innerHTML = panel(`
     <div class="result-loading">
       <span class="eyebrow">Preparando seu Raio-X</span>
-      <h1>Estamos organizando o seu resultado.</h1>
+      <h1>Suas 8 respostas foram recebidas.</h1>
+      <div class="loading-complete-badge">
+        <span>Questionário concluído</span>
+        <strong>8/8</strong>
+      </div>
       <p class="result-loading-status" id="result-loading-status">${RESULT_LOADING_MESSAGES[0]}</p>
       <div class="result-loading-track" aria-label="Preparação do resultado">
         <div class="result-loading-bar" id="result-loading-bar"></div>
       </div>
-      <div class="result-loading-percent" id="result-loading-percent">0%</div>
+      <div class="result-loading-meta">
+        <span>Preparando seu resultado</span>
+        <strong id="result-loading-percent">0%</strong>
+      </div>
       <div class="loading-proof">
-        <span class="loading-proof-label">Enquanto isso, veja resultados de quem já passou pela experiência:</span>
+        <span class="loading-proof-label">Enquanto finalizamos, veja alguns depoimentos reais de participantes:</span>
         <div class="loading-testimonial-frame">
           <img id="loading-testimonial-image" src="${RESULT_TESTIMONIALS[0]}" alt="Depoimento real de participante do Raio-X Humano" loading="eager" decoding="async">
         </div>
@@ -726,13 +834,29 @@ async function runResultPreparation(){
 }
 
 function renderResult() {
+  state.profile = deriveResultProfile();
   const result = RESULTS[state.profile] || RESULTS.vida_pessoal;
   const vslProfile = getVslProfile();
   const player = VSL_PLAYERS[vslProfile];
   root.innerHTML = panel(`
     <div class="result-simple">
+      <div class="result-ready-progress">
+        <div class="result-ready-head">
+          <span>Seu Raio-X foi concluído</span>
+          <strong>8/8 respostas analisadas</strong>
+        </div>
+        <div class="result-ready-track"><div class="result-ready-fill"></div></div>
+      </div>
       <span class="result-badge">${result.badge}</span>
       <h1>${result.title}</h1>
+      <p class="result-summary">${result.paragraphs?.[0] || ""}</p>
+      <div class="result-highlights">
+        ${renderResultHighlights()}
+      </div>
+      <div class="result-vsl-intro">
+        <span>Agora veja a explicação do seu resultado</span>
+        <strong>Assista ao vídeo abaixo até o momento da oferta.</strong>
+      </div>
       <div class="video-frame" aria-label="Vídeo do Workshop Raio-X Humano">
         <vturb-smartplayer id="${player.id}" style="display:block;margin:0 auto;width:100%;max-width:400px;">
           <div class="vturb-player-placeholder"></div>
@@ -765,7 +889,13 @@ function renderResult() {
   loadVturbPlayer(player);
   RX.emit("quiz_result_view", {screen:"result"});
   RX.emit("view_item", {currency:"BRL",value:37,screen:"result"});
-  window.setTimeout(() => {const cta=document.querySelector("#checkout-cta");if(cta){cta.classList.add("visible");RX.emit("rx_cta_view",{element_id:"checkout-button",cta_delay_seconds:RAIOX_CONFIG.ctaDelaySeconds});}}, RAIOX_CONFIG.ctaDelaySeconds * 1000);
+  window.setTimeout(() => {
+    const cta=document.querySelector("#checkout-cta");
+    if(cta){
+      cta.classList.add("visible");
+      RX.emit("rx_cta_view",{element_id:"checkout-button",cta_delay_seconds:RAIOX_CONFIG.ctaDelaySeconds});
+    }
+  }, RAIOX_CONFIG.ctaDelaySeconds * 1000);
   document.querySelector("#checkout-button").addEventListener("click", () => {
     state.checkoutClicked = true;RX.saveCheckpoint(state);
     RX.emit("rx_checkout_click", {element_id:"checkout-button",link_domain:"pay.hub.la",currency:"BRL",value:37});
