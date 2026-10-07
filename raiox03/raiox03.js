@@ -547,21 +547,21 @@ function renderLead() {
         <label for="phone">Telefone (WhatsApp):</label>
         <div class="phone-field">
           <select id="country-code" name="country_code" aria-label="País e código DDI">
-            <option value="+55" selected>🇧🇷 Brasil +55</option>
-            <option value="+351">🇵🇹 Portugal +351</option>
-            <option value="+1">🇺🇸 EUA/Canadá +1</option>
-            <option value="+34">🇪🇸 Espanha +34</option>
-            <option value="+54">🇦🇷 Argentina +54</option>
-            <option value="+56">🇨🇱 Chile +56</option>
-            <option value="+598">🇺🇾 Uruguai +598</option>
-            <option value="+595">🇵🇾 Paraguai +595</option>
-            <option value="+52">🇲🇽 México +52</option>
-            <option value="+44">🇬🇧 Reino Unido +44</option>
-            <option value="+39">🇮🇹 Itália +39</option>
-            <option value="+33">🇫🇷 França +33</option>
-            <option value="+49">🇩🇪 Alemanha +49</option>
-            <option value="+41">🇨🇭 Suíça +41</option>
-            <option value="+43">🇦🇹 Áustria +43</option>
+            <option value="+55" selected>🇧🇷 +55</option>
+            <option value="+351">🇵🇹 +351</option>
+            <option value="+1">🇺🇸 +1</option>
+            <option value="+34">🇪🇸 +34</option>
+            <option value="+54">🇦🇷 +54</option>
+            <option value="+56">🇨🇱 +56</option>
+            <option value="+598">🇺🇾 +598</option>
+            <option value="+595">🇵🇾 +595</option>
+            <option value="+52">🇲🇽 +52</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+39">🇮🇹 +39</option>
+            <option value="+33">🇫🇷 +33</option>
+            <option value="+49">🇩🇪 +49</option>
+            <option value="+41">🇨🇭 +41</option>
+            <option value="+43">🇦🇹 +43</option>
           </select>
           <input id="phone" name="phone" type="tel" inputmode="tel" maxlength="24" autocomplete="tel" placeholder="38 99864-4885" value="" required>
         </div>
