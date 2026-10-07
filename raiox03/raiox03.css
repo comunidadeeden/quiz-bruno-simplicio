@@ -833,3 +833,16 @@ p {
   .confirmation-grid .confirmation-answer:nth-child(3){grid-column:1/-1}
   .result-highlights{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+
+/* RaioX03 · reveal da VSL somente após a barra concluir */
+.result-vsl-reveal{
+  animation:rx03ResultReveal .42s ease both;
+}
+@keyframes rx03ResultReveal{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@media (prefers-reduced-motion:reduce){
+  .result-vsl-reveal{animation:none}
+}
