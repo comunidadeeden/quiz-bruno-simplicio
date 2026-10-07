@@ -1587,3 +1587,12 @@ input:focus-visible{
 @media(prefers-reduced-motion:reduce){
   .loading-testimonial-frame{transform:none}
 }
+
+
+/* RaioX03 · remover cabeçalho superior do quiz */
+.topbar{
+  display:none !important;
+}
+.app-shell{
+  padding-top:7px;
+}
