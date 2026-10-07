@@ -343,9 +343,10 @@ function attemptLeadSave(honey = "") {
   return leadSavePromise;
 }
 
-function queueOperationalSave(key, name, details, checkpoint) {
-  const item = {name, details, checkpoint, promise: null};
-  item.promise = ensureLeadSaved()
+function queueOperationalSave(key, name, details, checkpoint, options = {}) {
+  const requiresLead = options.requiresLead !== false;
+  const item = {name, details, checkpoint, requiresLead, promise: null};
+  item.promise = (requiresLead ? ensureLeadSaved() : Promise.resolve(true))
     .then(() => RX.saveProgress(name, details))
     .then(() => {
       acknowledgeCheckpoint(checkpoint);
@@ -375,7 +376,7 @@ async function flushOperationalSaves() {
     let saved = await item.promise;
     if (!saved) {
       try {
-        await ensureLeadSaved();
+        if (item.requiresLead !== false) await ensureLeadSaved();
         await RX.saveProgress(item.name, item.details);
         saved = true;
       } catch (_) {
@@ -531,31 +532,36 @@ function updateProgress() {
 function renderLead() {
   const lead = state.lead || {};
   root.innerHTML = panel(`
-    <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1>Preencha seus dados para começar.</h1>
-    <p class="lead">Você receberá o seu resultado e os próximos passos do Workshop Raio-X Humano.</p>
+    <span class="eyebrow">Seu Raio-X já começou</span>
+    <h1>Suas primeiras respostas já foram analisadas.</h1>
+    <p class="lead">Deixe seu e-mail e WhatsApp para continuar o teste e receber o resultado ao final.</p>
+    <div class="confirmation-grid lead-previews">
+      ${renderConfirmationItems([
+        {label:"Onde você mais gostaria de ler alguém rapidamente", value:responseValue("situation")},
+        {label:"O que mais incomoda ao julgar alguém errado", value:responseValue("judgment_error")}
+      ])}
+    </div>
     <form class="form" id="lead-form" novalidate>
-      <div class="field"><label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome completo" maxlength="160" value="${escapeHtml(lead.name || "")}" required></div>
       <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field"><label for="phone">Telefone ( Whatsapp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="field"><label for="phone">Telefone (WhatsApp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar</button></div>
+      <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar meu Raio-X</button></div>
     </form>
     <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
   document.querySelector("#lead-form").addEventListener("submit", handleLeadSubmit);
   document.querySelector("#lead-form").addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
-  RX.emit("rx_form_view", {screen:"lead"});
+  RX.emit("rx_form_view", {screen:"lead", step_index:state.stepIndex+1});
 }
 
 async function handleLeadSubmit(event) {
   event.preventDefault();
   const element=event.currentTarget, button=element.querySelector('button[type="submit"]');
   if(button.disabled)return;
-  RX.emit("rx_form_submit_attempt", {screen:"lead"});
+  RX.emit("rx_form_submit_attempt", {screen:"lead", step_index:state.stepIndex+1});
   const form=new FormData(element);
-  const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
+  const lead={name:"",email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
   button.disabled=true;document.querySelector("#form-error").textContent="";
@@ -563,14 +569,14 @@ async function handleLeadSubmit(event) {
   saveCheckoutPrefill(lead);
   const honey=form.get("company_website");
   void attemptLeadSave(honey);
+  state.captureViewed = true;
   state.screen="step";
   render();
 }
 
 function validateLead(lead) {
-  if(lead.name.length<4||lead.name.length>160||lead.name.split(/\s+/).length<2||/[<>@]/.test(lead.name))return {code:"invalid_full_name",message:"Informe seu nome completo, com nome e sobrenome."};
-  if(lead.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
-  if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
+  if(lead.email.length>254||!/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
+  if(!/^\\+[1-9]\\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
   return null;
 }
 
@@ -599,8 +605,7 @@ function renderOpening() {
   document.querySelector("#start-button").dataset.rxReady = "1";
   document.querySelector("#start-button").removeAttribute("aria-busy");
   document.querySelector("#start-button").addEventListener("click", () => {
-    state.captureViewed = true;
-    state.screen = "lead";
+    state.screen = "step";
     RX.emit("quiz_start", {screen:"opening"});
     render();
   });
@@ -687,10 +692,15 @@ function answerStep(step, optionIndex, button) {
   state.answerIndexes[step.id]=optionIndex;
   markStepCompleted(step.id);
   const checkpoint=makeAcknowledgedCheckpoint();
-  queueOperationalSave("answer:"+step.id,"quiz_answer",details,checkpoint);
+  const isPreLeadQuestion = step.id === "situation" || step.id === "judgment_error";
+  queueOperationalSave("answer:"+step.id,"quiz_answer",details,checkpoint,{requiresLead:!isPreLeadQuestion});
   RX.emit("quiz_step_complete",{step_id:step.id,step_index:stepIndex,step_type:step.type});
   state.stepIndex+=1;
-  if(state.stepIndex>=STEPS.length)state.screen="loading";
+  if(step.id === "judgment_error" && !state.leadSaved && !state.lead){
+    state.screen="lead";
+  } else if(state.stepIndex>=STEPS.length) {
+    state.screen="loading";
+  }
   render();
 }
 
