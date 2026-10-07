@@ -856,8 +856,6 @@ function renderResult() {
   root.innerHTML = panel(`
     <div class="result-simple result-vsl-reveal">
       <span class="result-badge">${result.badge}</span>
-      <h1>${result.title}</h1>
-      <p class="result-summary">${result.paragraphs?.[0] || ""}</p>
       <div class="result-vsl-intro">
         <span>Agora entenda o que suas respostas revelam</span>
         <strong>Assista ao vídeo abaixo para ver a explicação completa do seu resultado.</strong>
