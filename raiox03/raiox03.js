@@ -867,7 +867,6 @@ function renderResult() {
           <div class="vturb-player-placeholder"></div>
         </vturb-smartplayer>
       </div>
-      <div class="workshop-date-card"><span>Workshop Raio-X Humano</span><strong>${RAIOX_CONFIG.workshopDateText}</strong></div>
       <div class="fixed-cta result-fixed-cta" id="checkout-cta">
         <div class="lot-grid" aria-label="Lotes do Workshop Raio-X Humano">
           <div class="lot-card lot-card-current">
