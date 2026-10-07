@@ -692,8 +692,8 @@ function answerStep(step, optionIndex, button) {
   render();
 }
 
-const RESULT_LOADING_MIN_MS = 7600;
-const RESULT_LOADING_TARGET_MS = 9500;
+const RESULT_LOADING_MIN_MS = 10000;
+const RESULT_LOADING_TARGET_MS = 10000;
 const RESULT_TESTIMONIALS = [
   "/pagina01/assets/a6fc5493469ca8e6deb52fea8094125e.webp",
   "/pagina01/assets/8d3965297bab277becfe87dbee835d4c.webp",
@@ -740,18 +740,18 @@ function wait(ms){return new Promise(resolve=>window.setTimeout(resolve,ms));}
 function renderLoading() {
   root.innerHTML = panel(`
     <div class="result-loading">
-      <span class="eyebrow">Preparando seu Raio-X</span>
-      <h1>Suas 8 respostas foram recebidas.</h1>
+      <span class="eyebrow">Resultado do seu Raio-X</span>
+      <h1>Estamos analisando suas 8 respostas.</h1>
       <div class="loading-complete-badge">
         <span>Questionário concluído</span>
         <strong>8/8</strong>
       </div>
-      <p class="result-loading-status" id="result-loading-status">${RESULT_LOADING_MESSAGES[0]}</p>
+      <p class="result-loading-status" id="result-loading-status" aria-live="polite">${RESULT_LOADING_MESSAGES[0]}</p>
       <div class="result-loading-track" aria-label="Preparação do resultado">
         <div class="result-loading-bar" id="result-loading-bar"></div>
       </div>
       <div class="result-loading-meta">
-        <span>Preparando seu resultado</span>
+        <span>Análise do resultado</span>
         <strong id="result-loading-percent">0%</strong>
       </div>
       <div class="loading-proof">
@@ -824,8 +824,8 @@ async function runResultPreparation(){
   window.clearInterval(testimonialTimer);
   if(bar)bar.style.width="100%";
   if(percent)percent.textContent="100%";
-  if(status)status.textContent="Seu Raio-X está pronto.";
-  await wait(350);
+  if(status)status.textContent="Resultado pronto. Abrindo sua análise...";
+  await wait(500);
 
   resultPreparationRunning=false;
   state.screen="result";
@@ -839,7 +839,7 @@ function renderResult() {
   const vslProfile = getVslProfile();
   const player = VSL_PLAYERS[vslProfile];
   root.innerHTML = panel(`
-    <div class="result-simple">
+    <div class="result-simple result-vsl-reveal">
       <div class="result-ready-progress">
         <div class="result-ready-head">
           <span>Seu Raio-X foi concluído</span>
