@@ -61,82 +61,133 @@ const VSL_PLAYERS = {
 
 const STEPS = [
   {
-    id: "profile",
+    id: "situation",
     type: "question",
-    label: "Perfil",
-    text: "Em qual situação seria mais valioso compreender uma pessoa antes da primeira conversa?",
+    label: "Pergunta 1",
+    text: "Em qual situação você mais gostaria de conseguir ler uma pessoa rapidamente?",
     options: [
-      { label: "Antes ou durante um atendimento terapêutico.", profile: "terapeuta" },
-      { label: "Para começar uma nova atuação como terapeuta.", profile: "futuro_terapeuta" },
-      { label: "Ao contratar, liderar, negociar, vender ou trabalhar com pessoas.", profile: "profissional_de_pessoas" },
-      { label: "Antes de confiar, me envolver ou tomar decisões na vida pessoal.", profile: "vida_pessoal" }
+      { label: "Durante um atendimento", profile: "terapeuta" },
+      { label: "Antes de confiar em alguém", profile: "vida_pessoal" },
+      { label: "Em uma negociação ou trabalho", profile: "profissional_de_pessoas" },
+      { label: "Em relacionamentos pessoais", profile: "vida_pessoal" }
     ]
   },
   {
-    id: "body_reading",
+    id: "judgment_error",
     type: "question",
-    label: "Seu olhar hoje",
-    text: "Hoje, apenas olhando para o corpo de uma pessoa, você conseguiria identificar se ela tende a ser mais racional, emocional, estratégica, resistente ou perfeccionista?",
+    label: "Pergunta 2",
+    text: "O que mais te incomoda quando você percebe que julgou uma pessoa errado?",
     options: [
-      { label: "Sim, consigo identificar com alguma precisão." },
-      { label: "Às vezes tenho uma impressão, mas não sei explicar de onde ela vem." },
-      { label: "Consigo perceber algumas características, mas ainda tenho muitas dúvidas." },
-      { label: "Não. Eu nem sabia que o formato do corpo poderia revelar esses traços." }
+      { label: "Descobrir tarde demais quem ela era" },
+      { label: "Não ter percebido sinais óbvios" },
+      { label: "Ter confiado além do que deveria" },
+      { label: "Não saber explicar por que algo parecia estranho" }
     ]
   },
   {
-    id: "insight_body",
+    id: "insight_precision",
     type: "insight",
-    title: "O corpo não mostra apenas aparência.",
-    body: "Na metodologia apresentada no Workshop Raio-X Humano, diferentes formatos, proporções e características corporais são organizados em cinco grandes traços de caráter.",
-    bullets: ["forças naturais", "dores emocionais", "mecanismos de defesa", "maneira de pensar", "forma de se relacionar", "tendências de comportamento"],
-    footer: "Isso permite começar uma leitura antes mesmo de ouvir a história da pessoa.",
-    button: "Continuar"
+    eyebrow: "Primeira confirmação",
+    progressText: "Seu resultado já começou a tomar forma.",
+    title: "Você não quer apenas observar melhor. Você quer perceber antes.",
+    body: "Suas primeiras respostas mostram que o maior valor dessa habilidade está em reduzir o tempo entre notar um sinal e entender o que ele pode significar.",
+    bullets: ["perceber incoerências mais cedo", "ter mais critério antes de confiar", "tomar decisões com mais segurança"],
+    footer: "Agora vamos descobrir como você já faz essa leitura hoje — mesmo sem perceber.",
+    button: "Continuar meu Raio-X"
   },
   {
-    id: "desired_reading",
+    id: "attention_focus",
     type: "question",
-    label: "O que você busca",
-    text: "O que você mais gostaria de conseguir identificar antes de uma pessoa falar?",
+    label: "Pergunta 3",
+    text: "Hoje, quando você conhece alguém, em que você mais presta atenção?",
     options: [
-      { label: "Como ela tende a reagir diante de pressão, críticas e conflitos." },
-      { label: "Como ela se relaciona, demonstra afeto e cria vínculos." },
-      { label: "Seus pontos fortes, suas dificuldades e a forma como toma decisões." },
-      { label: "Possíveis marcas emocionais e mecanismos de defesa que ela carrega." }
+      { label: "No que ela fala" },
+      { label: "No comportamento" },
+      { label: "No rosto e expressões" },
+      { label: "Eu ainda não sei exatamente onde olhar" }
     ]
   },
   {
-    id: "face_reading",
+    id: "emotional_value",
     type: "question",
-    label: "Leitura do rosto",
-    text: "Se você recebesse agora a fotografia do rosto de uma pessoa, o que saberia observar?",
+    label: "Pergunta 4",
+    text: "Se você conseguisse identificar padrões emocionais rapidamente, onde isso teria mais valor para você?",
     options: [
-      { label: "Diferenças entre o lado materno e o lado paterno do rosto." },
-      { label: "Sinais na região dos olhos relacionados a peso, ausência ou manipulação." },
-      { label: "Assimetrias que podem indicar experiências emocionais diferentes." },
-      { label: "Sinceramente, eu não saberia por onde começar." }
+      { label: "Nos meus atendimentos" },
+      { label: "Nos meus relacionamentos" },
+      { label: "Na minha vida profissional" },
+      { label: "Para entender melhor a mim mesmo" }
     ]
   },
   {
-    id: "insight_face",
+    id: "recurring_signal",
+    type: "question",
+    label: "Pergunta 5",
+    text: "Qual dessas situações acontece mais com você?",
+    options: [
+      { label: "A pessoa fala uma coisa, mas sinto que tem algo diferente" },
+      { label: "Só descubro quem ela realmente é depois de muito tempo" },
+      { label: "Percebo sinais, mas não sei interpretar" },
+      { label: "Tenho dificuldade de confiar na minha percepção" }
+    ]
+  },
+  {
+    id: "insight_signals",
     type: "insight",
-    title: "O rosto também pode ser analisado por regiões.",
-    body: "No Workshop, você vai conhecer uma leitura que divide o rosto em:",
-    bullets: ["lado direito, relacionado à referência paterna", "lado esquerdo, relacionado à referência materna"],
-    footer: "Você também vai aprender a observar indícios na região dos olhos que a metodologia associa a experiências como peso, ausência e manipulação. Não é apenas olhar para uma pessoa e sentir alguma coisa. É saber onde olhar e o que comparar.",
+    eyebrow: "Segunda confirmação",
+    progressText: "Seu padrão de percepção ficou mais claro.",
+    title: "Você provavelmente já percebe mais sinais do que consegue interpretar.",
+    body: "O problema não parece ser falta de percepção. É não ter um mapa claro para transformar sensação, comportamento, rosto e corpo em critérios de observação.",
+    bullets: ["o que observar primeiro", "como comparar sinais", "como separar impressão de padrão"],
+    footer: "As próximas respostas vão mostrar o que você mais quer aprender a identificar.",
     button: "Quero continuar"
   },
   {
-    id: "consequence",
+    id: "desired_discovery",
     type: "question",
-    label: "O erro que você evita",
-    text: "Se você aprendesse a identificar personalidade e tendências de comportamento antes da primeira palavra, qual erro gostaria de evitar?",
+    label: "Pergunta 6",
+    text: "O que você mais gostaria de descobrir olhando uma pessoa?",
     options: [
-      { label: "Perder tempo confiando ou me envolvendo com a pessoa errada." },
-      { label: "Conduzir um atendimento sem perceber o que existe por trás do relato." },
-      { label: "Contratar, negociar ou construir uma parceria baseado apenas no discurso." },
-      { label: "Repetir escolhas nos relacionamentos e só enxergar os sinais tarde demais." }
+      { label: "Como ela reage sob pressão" },
+      { label: "Quais padrões emocionais ela repete" },
+      { label: "Como ela se relaciona com outras pessoas" },
+      { label: "O que o corpo e o rosto revelam além do discurso" }
     ]
+  },
+  {
+    id: "first_result",
+    type: "question",
+    label: "Pergunta 7",
+    text: "Se você aprendesse essa habilidade, qual seria o primeiro resultado que gostaria de ter?",
+    options: [
+      { label: "Atender melhor meus pacientes" },
+      { label: "Evitar escolhas ruins em relacionamentos" },
+      { label: "Tomar decisões profissionais melhores" },
+      { label: "Entender melhor meu próprio comportamento" }
+    ]
+  },
+  {
+    id: "intuition_ignored",
+    type: "question",
+    label: "Pergunta 8",
+    text: "Você já teve a sensação de que havia algo errado em alguém, mas ignorou?",
+    options: [
+      { label: "Sim, muitas vezes" },
+      { label: "Algumas vezes" },
+      { label: "Raramente" },
+      { label: "Nunca percebi isso" }
+    ]
+  },
+  {
+    id: "insight_ready",
+    type: "insight",
+    eyebrow: "Última confirmação",
+    progressText: "Seu Raio-X está quase pronto.",
+    title: "Agora já dá para entender onde essa habilidade teria mais impacto para você.",
+    body: "Seu resultado vai combinar onde você mais precisa dessa leitura, como você percebe sinais hoje e o que gostaria de identificar com mais segurança.",
+    bullets: ["seu contexto principal", "seu nível atual de percepção", "o tipo de leitura que mais gera valor para você"],
+    footer: "Na próxima tela vamos organizar suas respostas e preparar o seu resultado.",
+    button: "Preparar meu resultado"
   }
 ];
 
@@ -188,7 +239,7 @@ if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]
   const consistent=STEPS.filter(s=>s.type==='question'&&resumed.completedSteps.includes(s.id))
     .every(s=>Number.isInteger(resumed.answerIndexes[s.id])&&resumed.answerIndexes[s.id]>=0&&resumed.answerIndexes[s.id]<s.options.length);
   if(consistent){
-    state={...state,...resumed,lead:null,stepIndex:count,screen:count<7?'step':resumed.screen==='result'?'result':'loading'};
+    state={...state,...resumed,lead:null,stepIndex:count,screen:count<STEPS.length?'step':resumed.screen==='result'?'result':'loading'};
     for(const step of STEPS.filter(s=>s.type==='question')){
       const idx=state.answerIndexes[step.id];if(Number.isInteger(idx)&&step.options[idx])state.answers[step.id]=step.options[idx].label;
     }
@@ -376,8 +427,8 @@ function render() {
   window.scrollTo({ top: 0, behavior: "smooth" });
   updateProgress();
   const current=STEPS[state.stepIndex];
-  RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
-  if (state.screen === "step" && state.stepIndex >= 5) prepareResultResources();
+  RX.setContext({screen:state.screen,step_index:Math.min(STEPS.length,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
+  if (state.screen === "step" && state.stepIndex >= 8) prepareResultResources();
   if (state.screen === "lead") return renderLead();
   if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
@@ -494,12 +545,13 @@ function markStepCompleted(stepId) {
 function renderInsight(step, progress) {
   root.innerHTML = panel(`
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
-    <span class="eyebrow">Ponto de observação</span>
-    <h2>${step.title}</h2>
+    <span class="eyebrow">${step.eyebrow || "Confirmação"}</span>
+    <div class="insight-progress-note">${step.progressText || ""}</div>
+    <h2 class="insight-title">${step.title}</h2>
     <div class="insight-card">
-      <p>${step.body}</p>
-      <ul class="opening-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
-      <p><strong>${step.footer}</strong></p>
+      <p class="insight-body">${step.body}</p>
+      <ul class="opening-list insight-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
+      <p class="insight-footer"><strong>${step.footer}</strong></p>
     </div>
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
@@ -539,11 +591,30 @@ function answerStep(step, optionIndex, button) {
   render();
 }
 
-let completionInFlight=false;
+const RESULT_LOADING_MIN_MS = 7600;
+const RESULT_LOADING_TARGET_MS = 9500;
+const RESULT_TESTIMONIALS = [
+  "/pagina01/assets/a6fc5493469ca8e6deb52fea8094125e.webp",
+  "/pagina01/assets/8d3965297bab277becfe87dbee835d4c.webp",
+  "/pagina01/assets/577e8f85ec2ca4301b5085fd2a25c373.webp",
+  "/pagina01/assets/1a6ccad4a7dfc6774f09f5e0bca83217.webp"
+];
+const RESULT_LOADING_MESSAGES = [
+  "Analisando suas respostas...",
+  "Identificando seus padrões de percepção...",
+  "Cruzando onde essa habilidade teria mais valor...",
+  "Organizando o seu resultado personalizado...",
+  "Seu Raio-X está quase pronto..."
+];
+
+let completionConfirmed=false;
+let completionPromise=null;
+let resultPreparationRunning=false;
+
 async function finalizeQuizInBackground() {
-  if(completionInFlight)return;
-  completionInFlight=true;
-  try {
+  if(completionConfirmed)return true;
+  if(completionPromise)return completionPromise;
+  completionPromise=(async()=>{
     await ensureLeadSaved();
     await flushOperationalSaves();
     const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{
@@ -551,23 +622,107 @@ async function finalizeQuizInBackground() {
       return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};
     });
     const result=await RX.saveProgress("quiz_complete",{step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]});
-    if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==5 || Number(result.quiz_status?.etapas_concluidas)!==7))throw new Error("completion_not_confirmed");
+    if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==8 || Number(result.quiz_status?.etapas_concluidas)!==11))throw new Error("completion_not_confirmed");
     state.leadSaved=true;
+    completionConfirmed=true;
     RX.saveCheckpoint({...state,screen:"result",resultViewed:true});
-  } catch (_) {
-    // A UI permanece livre. A fila usa IDs estáveis e o fluxo volta a tentar
-    // em recarregamento/retorno de conexão sem bloquear o usuário.
-    window.addEventListener("online", finalizeQuizInBackground, {once:true});
-  } finally {
-    completionInFlight=false;
-  }
+    return true;
+  })().catch(()=>{
+    window.addEventListener("online",()=>{void finalizeQuizInBackground();},{once:true});
+    return false;
+  }).finally(()=>{completionPromise=null;});
+  return completionPromise;
 }
 
+function wait(ms){return new Promise(resolve=>window.setTimeout(resolve,ms));}
+
 function renderLoading() {
+  root.innerHTML = panel(`
+    <div class="result-loading">
+      <span class="eyebrow">Preparando seu Raio-X</span>
+      <h1>Estamos organizando o seu resultado.</h1>
+      <p class="result-loading-status" id="result-loading-status">${RESULT_LOADING_MESSAGES[0]}</p>
+      <div class="result-loading-track" aria-label="Preparação do resultado">
+        <div class="result-loading-bar" id="result-loading-bar"></div>
+      </div>
+      <div class="result-loading-percent" id="result-loading-percent">0%</div>
+      <div class="loading-proof">
+        <span class="loading-proof-label">Enquanto isso, veja resultados de quem já passou pela experiência:</span>
+        <div class="loading-testimonial-frame">
+          <img id="loading-testimonial-image" src="${RESULT_TESTIMONIALS[0]}" alt="Depoimento real de participante do Raio-X Humano" loading="eager" decoding="async">
+        </div>
+      </div>
+    </div>
+  `);
+  if(resultPreparationRunning)return;
+  resultPreparationRunning=true;
+  void runResultPreparation();
+}
+
+async function runResultPreparation(){
+  const started=Date.now();
+  const bar=document.querySelector("#result-loading-bar");
+  const percent=document.querySelector("#result-loading-percent");
+  const status=document.querySelector("#result-loading-status");
+  const image=document.querySelector("#loading-testimonial-image");
+  let testimonialIndex=0;
+  let messageIndex=0;
+
+  const progressTimer=window.setInterval(()=>{
+    const elapsed=Date.now()-started;
+    const pct=Math.min(96,Math.max(4,Math.round((elapsed/RESULT_LOADING_TARGET_MS)*96)));
+    if(bar)bar.style.width=pct+"%";
+    if(percent)percent.textContent=pct+"%";
+  },120);
+
+  const messageTimer=window.setInterval(()=>{
+    messageIndex=Math.min(RESULT_LOADING_MESSAGES.length-1,messageIndex+1);
+    if(status)status.textContent=RESULT_LOADING_MESSAGES[messageIndex];
+  },1800);
+
+  const testimonialTimer=window.setInterval(()=>{
+    testimonialIndex=(testimonialIndex+1)%RESULT_TESTIMONIALS.length;
+    if(image){
+      image.classList.add("is-changing");
+      window.setTimeout(()=>{
+        image.src=RESULT_TESTIMONIALS[testimonialIndex];
+        image.classList.remove("is-changing");
+      },160);
+    }
+  },2200);
+
+  let saved=await finalizeQuizInBackground();
+  while(!saved && Date.now()-started<RESULT_LOADING_TARGET_MS){
+    await wait(900);
+    saved=await finalizeQuizInBackground();
+  }
+
+  const elapsed=Date.now()-started;
+  if(elapsed<RESULT_LOADING_MIN_MS)await wait(RESULT_LOADING_MIN_MS-elapsed);
+
+  if(!saved){
+    if(status)status.textContent="Só mais um instante para confirmar suas respostas...";
+    while(!saved){
+      await wait(1200);
+      saved=await finalizeQuizInBackground();
+    }
+  }
+
+  const remaining=RESULT_LOADING_TARGET_MS-(Date.now()-started);
+  if(remaining>0)await wait(remaining);
+
+  window.clearInterval(progressTimer);
+  window.clearInterval(messageTimer);
+  window.clearInterval(testimonialTimer);
+  if(bar)bar.style.width="100%";
+  if(percent)percent.textContent="100%";
+  if(status)status.textContent="Seu Raio-X está pronto.";
+  await wait(350);
+
+  resultPreparationRunning=false;
   state.screen="result";
   state.resultViewed=true;
   render();
-  void finalizeQuizInBackground();
 }
 
 function renderResult() {

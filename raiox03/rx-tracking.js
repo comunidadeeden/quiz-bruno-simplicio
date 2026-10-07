@@ -10,11 +10,11 @@
     consentVersion:oldConfig.consentVersion||'rx03-2026-10-07',maxRetries:2,webhookTimeoutMs:18000};
   if(w.__RX_DIRECT_V4_INSTALLED)throw new Error('rx_tracking_loaded_twice');
   w.__RX_DIRECT_V4_INSTALLED=true;
-  const expectedSteps=['profile','body_reading','insight_body','desired_reading','face_reading','insight_face','consequence'];
-  const expectedQuestions=['profile','body_reading','desired_reading','face_reading','consequence'];
+  const expectedSteps=['situation','judgment_error','insight_precision','attention_focus','emotional_value','recurring_signal','insight_signals','desired_discovery','first_result','intuition_ignored','insight_ready'];
+  const expectedQuestions=['situation','judgment_error','attention_focus','emotional_value','recurring_signal','desired_discovery','first_result','intuition_ignored'];
   let registeredSteps=null,lastDeliveryError=null;
   function registerSteps(steps){
-    if(!Array.isArray(steps)||steps.length!==7||steps.some((s,i)=>s?.id!==expectedSteps[i]))throw new Error('quiz_catalog_incompatible');
+    if(!Array.isArray(steps)||steps.length!==11||steps.some((s,i)=>s?.id!==expectedSteps[i]))throw new Error('quiz_catalog_incompatible');
     for(const s of steps){if(expectedQuestions.includes(s.id)&&(!Array.isArray(s.options)||s.options.length!==4||
       s.options.some(o=>typeof o?.label!=='string'||!o.label.trim()||o.label.length>1000)))throw new Error('quiz_catalog_incompatible');}
     registeredSteps=steps;return true;
@@ -37,19 +37,19 @@
     if(name==='quiz_complete'){
       const raw=v.answers;if(!raw||typeof raw!=='object')throw new Error('answers_snapshot_required');
       if(Array.isArray(raw)){
-        if(raw.length!==5||new Set(raw.map(x=>x?.question_id)).size!==5)throw new Error('incomplete_snapshot');
+        if(raw.length!==8||new Set(raw.map(x=>x?.question_id)).size!==8)throw new Error('incomplete_snapshot');
         v.answers=expectedQuestions.map(id=>{const a=raw.find(x=>x?.question_id===id);if(!a)throw new Error('incomplete_snapshot');return answerRecord(id,a.option_index,a);});
       }else{
-        if(Object.keys(raw).length!==5||expectedQuestions.some(id=>!Object.prototype.hasOwnProperty.call(raw,id)))throw new Error('incomplete_snapshot');
+        if(Object.keys(raw).length!==8||expectedQuestions.some(id=>!Object.prototype.hasOwnProperty.call(raw,id)))throw new Error('incomplete_snapshot');
         v.answers=expectedQuestions.map(id=>answerRecord(id,raw[id]));
       }
     }
     if(name==='quiz_answer'||name==='quiz_complete'){
       const a=v.completed_steps;
-      if(!Array.isArray(a)||!a.length||a.length>7||a.some((id,i)=>id!==expectedSteps[i])||
-        (name==='quiz_complete'&&a.length!==7)||(name==='quiz_answer'&&a[a.length-1]!==v.question_id))throw new Error('invalid_step_snapshot');
+      if(!Array.isArray(a)||!a.length||a.length>11||a.some((id,i)=>id!==expectedSteps[i])||
+        (name==='quiz_complete'&&a.length!==11)||(name==='quiz_answer'&&a[a.length-1]!==v.question_id))throw new Error('invalid_step_snapshot');
     }
-    if(name==='quiz_insight_continue'&&!['insight_body','insight_face'].includes(v.step_id))throw new Error('invalid_step');
+    if(name==='quiz_insight_continue'&&!['insight_precision','insight_signals','insight_ready'].includes(v.step_id))throw new Error('invalid_step');
     return v;
   }
   function reportError(e,p){
@@ -82,16 +82,16 @@
     const qs=['profile','body_reading','desired_reading','face_reading','consequence'];
     if(!value || value.leadSaved!==true || !['step','loading','result'].includes(value.screen))return;
     const completed=value.completedSteps;
-    if(!Array.isArray(completed)||completed.length>7||completed.some((id,i)=>id!==ids[i]))return;
+    if(!Array.isArray(completed)||completed.length>11||completed.some((id,i)=>id!==ids[i]))return;
     const indexes={}; for(const q of qs){const i=value.answerIndexes?.[q];if(Number.isInteger(i)&&i>=0&&i<=3)indexes[q]=i;}
-    checkpoint={screen:value.screen,stepIndex:Math.min(7,Math.max(0,Number(value.stepIndex)||0)),leadSaved:true,
+    checkpoint={screen:value.screen,stepIndex:Math.min(11,Math.max(0,Number(value.stepIndex)||0)),leadSaved:true,
       completedSteps:completed.slice(),answerIndexes:indexes,resultViewed:value.resultViewed===true,checkoutClicked:value.checkoutClicked===true};
     persistRuntime();
   }
   function getCheckpoint(){
     const x=checkpoint,ids=['profile','body_reading','insight_body','desired_reading','face_reading','insight_face','consequence'];
     if(!token||!x||x.leadSaved!==true||!['step','loading','result'].includes(x.screen)
-      ||!Array.isArray(x.completedSteps)||x.completedSteps.length>7||x.completedSteps.some((id,i)=>id!==ids[i])
+      ||!Array.isArray(x.completedSteps)||x.completedSteps.length>11||x.completedSteps.some((id,i)=>id!==ids[i])
       ||!x.answerIndexes||typeof x.answerIndexes!=='object'||Array.isArray(x.answerIndexes))return null;
     const indexes={};
     for(const q of ['profile','body_reading','desired_reading','face_reading','consequence']){
@@ -198,7 +198,7 @@
     let pending=pendingProgress.get(key);
     if(!pending || pending.snapshot!==snapshot){pending={snapshot,p:payload(name,details)};pendingProgress.set(key,pending);}
     const result=await serial(pending.p);
-    if(name==='quiz_complete' && !cfg.testMode && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=='concluido' || result.quiz_status?.perguntas_respondidas!==5 || result.quiz_status?.etapas_concluidas!==7)){const e=new Error('completion_not_confirmed');reportError(e,pending.p);throw e;}
+    if(name==='quiz_complete' && !cfg.testMode && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=='concluido' || result.quiz_status?.perguntas_respondidas!==8 || result.quiz_status?.etapas_concluidas!==11)){const e=new Error('completion_not_confirmed');reportError(e,pending.p);throw e;}
     // Completion/answers only reach analytics after the backend ACK. Details stay allowlisted.
     publicEvent(name,pending.p.event_id,{...context,...details});
     pendingProgress.delete(key);
