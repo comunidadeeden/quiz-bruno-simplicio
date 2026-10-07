@@ -211,8 +211,9 @@ p {
 
 .phone-field {
   display: grid;
-  grid-template-columns: minmax(138px, 42%) 1fr;
-  gap: 10px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
 }
 
 .phone-field select,
