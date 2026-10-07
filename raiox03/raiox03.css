@@ -208,6 +208,35 @@ p {
 }
 
 .field input::placeholder { color: #a3acb9; }
+
+.phone-field {
+  display: grid;
+  grid-template-columns: minmax(138px, 42%) 1fr;
+  gap: 10px;
+}
+
+.phone-field select,
+.phone-field input {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.phone-field select {
+  appearance: auto;
+}
+
+@media (max-width: 420px) {
+  .phone-field {
+    grid-template-columns: 1fr;
+  }
+}
 .error { min-height: 20px; color: var(--danger); font-size: 13px; font-weight: 800; text-align: center; }
 .fine-print { margin: 14px auto 0; color: var(--muted-2); font-size: 12px; text-align: center; }
 
