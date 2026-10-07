@@ -213,6 +213,11 @@ p {
   background: #fff !important;
 }
 
+#phone,
+#country-code {
+  background: #fff !important;
+}
+
 .phone-field {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
