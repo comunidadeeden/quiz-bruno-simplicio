@@ -542,7 +542,7 @@ function renderLead() {
       ])}
     </div>
     <form class="form" id="lead-form" novalidate>
-      <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+      <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="text" inputmode="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
       <div class="field"><label for="phone">Telefone (WhatsApp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
@@ -575,7 +575,8 @@ async function handleLeadSubmit(event) {
 }
 
 function validateLead(lead) {
-  if(lead.email.length>254||!/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
+  if(!lead.email)return {code:"email_required",message:"Informe seu e-mail para continuar."};
+  if(lead.email.length>254)return {code:"email_too_long",message:"O e-mail informado é muito longo."};
   if(!/^\\+[1-9]\\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
   return null;
 }
