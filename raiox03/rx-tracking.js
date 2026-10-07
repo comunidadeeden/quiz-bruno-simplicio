@@ -7,7 +7,7 @@
     webhookUrl:'https://nklqcamhkwqictdmictb.supabase.co/functions/v1/raiox03-collect',
     source:'quiz_raiox03',launch:'raiox03_2026_10',resumeSession:oldConfig.resumeSession!==false,
     testMode:oldConfig.testMode===true||new URLSearchParams(w.location.search).get('rx_test')==='1',
-    consentVersion:oldConfig.consentVersion||'rx03-2026-09-29',maxRetries:2,webhookTimeoutMs:18000};
+    consentVersion:oldConfig.consentVersion||'rx03-2026-10-07',maxRetries:2,webhookTimeoutMs:18000};
   if(w.__RX_DIRECT_V4_INSTALLED)throw new Error('rx_tracking_loaded_twice');
   w.__RX_DIRECT_V4_INSTALLED=true;
   const expectedSteps=['profile','body_reading','insight_body','desired_reading','face_reading','insight_face','consequence'];
@@ -70,7 +70,7 @@
   const sessionId=saved?.session_id||uid(), clientKey=saved?.client_key||uid(), openedAt=saved?.opened_at||new Date().toISOString();
   let token=validId(saved?.session_token)?saved.session_token:null, seq=saved?.sequence||0,
     checkpoint=saved?.checkpoint||null, latestStatus=null,
-    context={screen:'intro',step_index:0}, queue=Promise.resolve(), consentListeners=[];
+    context={screen:'opening',step_index:0}, queue=Promise.resolve(), consentListeners=[];
   function persistRuntime(){
     if(!cfg.resumeSession)return;
     try{sessionStorage.setItem(storageKey,JSON.stringify({version:cfg.version,session_id:sessionId,client_key:clientKey,
@@ -80,24 +80,24 @@
     // Never persist PII, arbitrary payloads or URLs. Only acknowledged quiz state.
     const ids=['profile','body_reading','insight_body','desired_reading','face_reading','insight_face','consequence'];
     const qs=['profile','body_reading','desired_reading','face_reading','consequence'];
-    if(!value || !['step','loading','result'].includes(value.screen))return;
+    if(!value || value.leadSaved!==true || !['step','loading','result'].includes(value.screen))return;
     const completed=value.completedSteps;
     if(!Array.isArray(completed)||completed.length>7||completed.some((id,i)=>id!==ids[i]))return;
     const indexes={}; for(const q of qs){const i=value.answerIndexes?.[q];if(Number.isInteger(i)&&i>=0&&i<=3)indexes[q]=i;}
-    checkpoint={screen:value.screen,stepIndex:Math.min(7,Math.max(0,Number(value.stepIndex)||0)),leadSaved:false,
+    checkpoint={screen:value.screen,stepIndex:Math.min(7,Math.max(0,Number(value.stepIndex)||0)),leadSaved:true,
       completedSteps:completed.slice(),answerIndexes:indexes,resultViewed:value.resultViewed===true,checkoutClicked:value.checkoutClicked===true};
     persistRuntime();
   }
   function getCheckpoint(){
     const x=checkpoint,ids=['profile','body_reading','insight_body','desired_reading','face_reading','insight_face','consequence'];
-    if(!token||!x||!['step','loading','result'].includes(x.screen)
+    if(!token||!x||x.leadSaved!==true||!['step','loading','result'].includes(x.screen)
       ||!Array.isArray(x.completedSteps)||x.completedSteps.length>7||x.completedSteps.some((id,i)=>id!==ids[i])
       ||!x.answerIndexes||typeof x.answerIndexes!=='object'||Array.isArray(x.answerIndexes))return null;
     const indexes={};
     for(const q of ['profile','body_reading','desired_reading','face_reading','consequence']){
       const n=x.answerIndexes[q];if(n!=null){if(!Number.isInteger(n)||n<0||n>3)return null;indexes[q]=n;}
     }
-    return {screen:x.screen,stepIndex:x.completedSteps.length,leadSaved:false,completedSteps:x.completedSteps.slice(),
+    return {screen:x.screen,stepIndex:x.completedSteps.length,leadSaved:true,completedSteps:x.completedSteps.slice(),
       answerIndexes:indexes,resultViewed:x.resultViewed===true,checkoutClicked:x.checkoutClicked===true};
   }
 
@@ -208,12 +208,12 @@
   async function saveLead(lead,honey) {
     if(String(honey||'').trim())throw new Error('invalid_form');
     consent.marketing_contact=lead.marketing_contact===true;
-    const normalized={email:String(lead.email||'').trim().toLowerCase(),telefone:normalizePhone(lead.phone),form_notice_version:cfg.consentVersion,honey:String(honey||'')};
+    const normalized={nome:String(lead.name||'').trim().replace(/\s+/g,' '),email:String(lead.email||'').trim().toLowerCase(),telefone:normalizePhone(lead.phone),form_notice_version:cfg.consentVersion,honey:String(honey||'')};
     // Retentativa manual do mesmo cadastro conserva ID; dados alterados geram novo evento.
     if(!pendingLead||JSON.stringify(pendingLead.lead)!==JSON.stringify(normalized))pendingLead=payload('lead_submit',{},normalized);
     const p=pendingLead, result=await serial(p);
-    publicEvent('lead_submit',p.event_id,{screen:'opening'});
-    publicEvent(result.lead_created===true?'generate_lead':'rx_lead_existing',p.event_id,{screen:'opening'});
+    publicEvent('lead_submit',p.event_id,{screen:'lead'});
+    publicEvent(result.lead_created===true?'generate_lead':'rx_lead_existing',p.event_id,{screen:'lead'});
     pendingLead=null;
     return result;
   }
