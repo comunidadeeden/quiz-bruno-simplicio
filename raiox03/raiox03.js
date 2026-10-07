@@ -713,6 +713,27 @@ const RESULT_LOADING_MESSAGES = [
 let completionConfirmed=false;
 let completionPromise=null;
 let resultPreparationRunning=false;
+let completionRetryTimer=null;
+let completionRetryAttempt=0;
+const COMPLETION_RETRY_DELAYS_MS=[1000,2000,5000,10000,20000,30000,60000];
+
+function keepFinalizingInBackground(){
+  if(completionConfirmed)return;
+  if(completionRetryTimer)return;
+  const run=async()=>{
+    completionRetryTimer=null;
+    if(completionConfirmed)return;
+    const saved=await finalizeQuizInBackground();
+    if(saved){
+      completionRetryAttempt=0;
+      return;
+    }
+    const delay=COMPLETION_RETRY_DELAYS_MS[Math.min(completionRetryAttempt,COMPLETION_RETRY_DELAYS_MS.length-1)];
+    completionRetryAttempt+=1;
+    completionRetryTimer=window.setTimeout(run,delay);
+  };
+  void run();
+}
 
 async function finalizeQuizInBackground() {
   if(completionConfirmed)return true;
@@ -778,12 +799,15 @@ async function runResultPreparation(){
   let testimonialIndex=0;
   let messageIndex=0;
 
+  // O salvamento crítico continua em paralelo, mas nunca segura a experiência visual.
+  keepFinalizingInBackground();
+
   const progressTimer=window.setInterval(()=>{
     const elapsed=Date.now()-started;
-    const pct=Math.min(96,Math.max(4,Math.round((elapsed/RESULT_LOADING_TARGET_MS)*96)));
+    const pct=Math.min(100,Math.max(1,Math.round((elapsed/RESULT_LOADING_TARGET_MS)*100)));
     if(bar)bar.style.width=pct+"%";
     if(percent)percent.textContent=pct+"%";
-  },120);
+  },100);
 
   const messageTimer=window.setInterval(()=>{
     messageIndex=Math.min(RESULT_LOADING_MESSAGES.length-1,messageIndex+1);
@@ -801,38 +825,27 @@ async function runResultPreparation(){
     }
   },2200);
 
-  let saved=await finalizeQuizInBackground();
-  while(!saved && Date.now()-started<RESULT_LOADING_TARGET_MS){
-    await wait(900);
-    saved=await finalizeQuizInBackground();
-  }
-
-  const elapsed=Date.now()-started;
-  if(elapsed<RESULT_LOADING_MIN_MS)await wait(RESULT_LOADING_MIN_MS-elapsed);
-
-  if(!saved){
-    if(status)status.textContent="Só mais um instante para confirmar suas respostas...";
-    while(!saved){
-      await wait(1200);
-      saved=await finalizeQuizInBackground();
-    }
-  }
-
   const remaining=RESULT_LOADING_TARGET_MS-(Date.now()-started);
   if(remaining>0)await wait(remaining);
 
   window.clearInterval(progressTimer);
   window.clearInterval(messageTimer);
   window.clearInterval(testimonialTimer);
+
   if(bar)bar.style.width="100%";
   if(percent)percent.textContent="100%";
   if(status)status.textContent="Resultado pronto. Abrindo sua análise...";
-  await wait(500);
+
+  // Dá um frame para o usuário ver 100% antes de revelar a VSL.
+  await wait(120);
 
   resultPreparationRunning=false;
   state.screen="result";
   state.resultViewed=true;
   render();
+
+  // Caso o backend ainda não tenha confirmado, continua tentando atrás da VSL.
+  keepFinalizingInBackground();
 }
 
 function renderResult() {
