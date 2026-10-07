@@ -211,8 +211,9 @@ p {
 
 .phone-field {
   display: grid;
-  grid-template-columns: minmax(138px, 42%) 1fr;
-  gap: 10px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
 }
 
 .phone-field select,
@@ -234,7 +235,12 @@ p {
 
 @media (max-width: 420px) {
   .phone-field {
-    grid-template-columns: 1fr;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .phone-field select,
+  .phone-field input {
+    font-size: 14px;
   }
 }
 .error { min-height: 20px; color: var(--danger); font-size: 13px; font-weight: 800; text-align: center; }
