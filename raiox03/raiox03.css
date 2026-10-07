@@ -1596,3 +1596,22 @@ input:focus-visible{
 .app-shell{
   padding-top:7px;
 }
+
+
+/* RaioX03 · hero da pagina03 adaptado ao quiz */
+.opening-title span{
+  color:#C99A2E;
+  white-space:nowrap;
+}
+.raiox-hero-visual{
+  width:min(100%,590px);
+  aspect-ratio:1400 / 1010;
+}
+.raiox-hero-visual img{
+  object-fit:cover;
+  object-position:center;
+}
+@media(max-width:560px){
+  .opening-title span{white-space:normal}
+  .raiox-hero-visual{width:100%}
+}

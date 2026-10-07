@@ -578,9 +578,9 @@ function renderOpening() {
   if (root.dataset.rxPrerendered !== "opening-v1" || !root.querySelector("#start-button")) {
     root.innerHTML = panel(`
     <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
+    <h1 class="opening-title">DESCUBRA O QUANTO O SEU OLHAR CONSEGUE PERCEBER SOBRE UMA PESSOA — TRAUMAS, FERIDAS COM PAI E MÃE E PADRÕES EMOCIONAIS — APENAS OLHANDO O ROSTO E O CORPO, <span>EM 5 SEGUNDOS!</span></h1>
     <figure class="raiox-hero-visual">
-      <img src="/raiox01/raio-x-hero-960.webp" srcset="/raiox01/raio-x-hero-640.webp 640w, /raiox01/raio-x-hero-960.webp 960w, /raiox01/raio-x-hero-1200.webp 1200w, /raiox01/raio-x-hero-wide.webp?v=2 1586w" sizes="(max-width: 520px) calc(100vw - 66px), 440px" fetchpriority="high" loading="eager" decoding="async" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+      <img src="/pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-820.webp" srcset="/pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-320.webp 320w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-460.webp 460w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-620.webp 620w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-820.webp 820w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-1400.webp 1400w" sizes="(max-width: 560px) calc(100vw - 46px), 590px" fetchpriority="high" loading="eager" decoding="async" alt="Mural de investigação com fotos de rostos, anotações e fios vermelhos" width="1400" height="1010">
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
     <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
