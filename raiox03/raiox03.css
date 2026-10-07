@@ -209,6 +209,10 @@ p {
 
 .field input::placeholder { color: #a3acb9; }
 
+#email {
+  background: #fff !important;
+}
+
 .phone-field {
   display: grid;
   grid-template-columns: 104px minmax(0, 1fr);
