@@ -859,8 +859,8 @@ function renderResult() {
       <h1>${result.title}</h1>
       <p class="result-summary">${result.paragraphs?.[0] || ""}</p>
       <div class="result-vsl-intro">
-        <span>Agora veja a explicação do seu resultado</span>
-        <strong>Assista ao vídeo abaixo até o momento da oferta.</strong>
+        <span>Agora entenda o que suas respostas revelam</span>
+        <strong>Assista ao vídeo abaixo para ver a explicação completa do seu resultado.</strong>
       </div>
       <div class="video-frame" aria-label="Vídeo do Workshop Raio-X Humano">
         <vturb-smartplayer id="${player.id}" style="display:block;margin:0 auto;width:100%;max-width:400px;">
