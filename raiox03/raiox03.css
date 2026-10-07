@@ -1995,3 +1995,72 @@ input:focus-visible{
     font-size:20px;
   }
 }
+
+
+/* RaioX03 · botões verdes pulsantes + CTA imediatamente abaixo da VSL */
+#start-button,
+#checkout-button{
+  background:#1A8A40 !important;
+  color:#FFFFFF !important;
+  box-shadow:0 5px 0 #0F5426,0 12px 26px rgba(26,138,64,.22) !important;
+  animation:raiox-green-pulse 1.55s ease-in-out infinite !important;
+  transform-origin:center;
+  will-change:transform,box-shadow;
+}
+
+#start-button:hover,
+#checkout-button:hover{
+  background:#157236 !important;
+}
+
+@keyframes raiox-green-pulse{
+  0%,100%{
+    transform:scale(1);
+    box-shadow:0 5px 0 #0F5426,0 0 0 0 rgba(26,138,64,0),0 12px 26px rgba(26,138,64,.18);
+  }
+  50%{
+    transform:scale(1.025);
+    box-shadow:0 5px 0 #0F5426,0 0 0 9px rgba(26,138,64,.13),0 16px 30px rgba(26,138,64,.24);
+  }
+}
+
+.result-fixed-cta.visible{
+  gap:16px;
+}
+
+.result-fixed-cta #checkout-button{
+  order:1;
+  margin-top:0;
+}
+
+.result-fixed-cta .checkout-offer-copy{
+  order:2;
+  margin-top:4px;
+}
+
+.result-fixed-cta .lot-grid{
+  order:3;
+}
+
+@media(max-width:560px){
+  .result-fixed-cta{
+    margin-top:12px;
+    padding-top:12px;
+  }
+
+  .result-fixed-cta #checkout-button{
+    min-height:60px;
+    font-size:18px;
+  }
+
+  .checkout-offer-copy{
+    margin-top:6px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  #start-button,
+  #checkout-button{
+    animation:none !important;
+  }
+}
