@@ -183,7 +183,7 @@ const progressLabel = document.querySelector("#progress-label");
 let state = createState();
 // Resume only the state whose previous requests were acknowledged; no PII is restored.
 const resumed=RX.getCheckpoint();
-if(resumed && Array.isArray(resumed.completedSteps) && resumed.completedSteps.every((id,i)=>STEPS[i]?.id===id)){
+if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]?.id===id)){
   const count=resumed.completedSteps.length;
   const consistent=STEPS.filter(s=>s.type==='question'&&resumed.completedSteps.includes(s.id))
     .every(s=>Number.isInteger(resumed.answerIndexes[s.id])&&resumed.answerIndexes[s.id]>=0&&resumed.answerIndexes[s.id]<s.options.length);
@@ -200,7 +200,7 @@ if(resumed && Array.isArray(resumed.completedSteps) && resumed.completedSteps.ev
 function createState() {
   const startedAt = new Date().toISOString();
   return {
-    screen: "step",
+    screen: "opening",
     stepIndex: 0,
     lead: null,
     leadSaved: false,
@@ -217,6 +217,139 @@ function createState() {
   };
 }
 
+let leadSavePromise = null;
+let leadSaveInFlight = false;
+let leadRetryTimer = null;
+let leadRetryAttempt = 0;
+let leadSaveErrorReported = false;
+let leadPersistenceBlocked = false;
+const LEAD_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000, 60000];
+const pendingOperationalSaves = new Map();
+let lastAcknowledgedCheckpoint = null;
+
+function makeAcknowledgedCheckpoint() {
+  return {
+    screen: state.screen,
+    stepIndex: state.stepIndex,
+    leadSaved: true,
+    completedSteps: [...state.completedSteps],
+    answerIndexes: {...state.answerIndexes},
+    resultViewed: state.resultViewed === true,
+    checkoutClicked: state.checkoutClicked === true
+  };
+}
+
+function acknowledgeCheckpoint(snapshot) {
+  lastAcknowledgedCheckpoint = snapshot;
+  if (state.leadSaved) RX.saveCheckpoint(snapshot);
+}
+
+function clearLeadRetryTimer() {
+  if (leadRetryTimer) window.clearTimeout(leadRetryTimer);
+  leadRetryTimer = null;
+}
+
+function markLeadSaved() {
+  state.leadSaved = true;
+  clearLeadRetryTimer();
+  leadRetryAttempt = 0;
+  if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
+}
+
+function scheduleLeadRetry() {
+  if (state.leadSaved || leadPersistenceBlocked || !state.lead || leadRetryTimer) return;
+  if (leadRetryAttempt >= LEAD_RETRY_DELAYS_MS.length) return;
+  const delay = LEAD_RETRY_DELAYS_MS[leadRetryAttempt++];
+  leadRetryTimer = window.setTimeout(() => {
+    leadRetryTimer = null;
+    void attemptLeadSave("");
+  }, delay);
+}
+
+function attemptLeadSave(honey = "") {
+  if (state.leadSaved) return Promise.resolve(true);
+  if (String(honey || "").trim()) leadPersistenceBlocked = true;
+  if (leadPersistenceBlocked || !state.lead) return Promise.resolve(false);
+  if (leadSaveInFlight && leadSavePromise) return leadSavePromise;
+
+  leadSaveInFlight = true;
+  leadSavePromise = RX.saveLead(state.lead, honey)
+    .then(() => {
+      markLeadSaved();
+      return true;
+    })
+    .catch(() => {
+      if (!leadSaveErrorReported) {
+        leadSaveErrorReported = true;
+        RX.emit("rx_form_submit_error", {error_code:"save_failed"});
+      }
+      scheduleLeadRetry();
+      return false;
+    })
+    .finally(() => {
+      leadSaveInFlight = false;
+    });
+  return leadSavePromise;
+}
+
+function queueOperationalSave(key, name, details, checkpoint) {
+  const item = {name, details, checkpoint, promise: null};
+  item.promise = ensureLeadSaved()
+    .then(() => RX.saveProgress(name, details))
+    .then(() => {
+      acknowledgeCheckpoint(checkpoint);
+      pendingOperationalSaves.delete(key);
+      return true;
+    })
+    .catch(() => false);
+  pendingOperationalSaves.set(key, item);
+}
+
+async function ensureLeadSaved() {
+  if (state.leadSaved) return true;
+  if (leadPersistenceBlocked) throw new Error("lead_not_available");
+  if (leadSavePromise) {
+    const saved = await leadSavePromise;
+    if (saved) return true;
+  }
+  if (!state.lead) throw new Error("lead_not_available");
+  const saved = await attemptLeadSave("");
+  if (!saved) throw new Error("lead_not_confirmed");
+  return true;
+}
+
+async function flushOperationalSaves() {
+  await ensureLeadSaved();
+  for (const [key, item] of [...pendingOperationalSaves.entries()]) {
+    let saved = await item.promise;
+    if (!saved) {
+      try {
+        await ensureLeadSaved();
+        await RX.saveProgress(item.name, item.details);
+        saved = true;
+      } catch (_) {
+        saved = false;
+      }
+    }
+    if (!saved) throw new Error("progress_not_confirmed");
+    acknowledgeCheckpoint(item.checkpoint);
+    pendingOperationalSaves.delete(key);
+  }
+}
+
+window.addEventListener("online", () => {
+  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
+  if (pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && state.lead && !state.leadSaved && !leadPersistenceBlocked) {
+    void attemptLeadSave("");
+  }
+});
+window.addEventListener("pagehide", () => {
+  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
+});
+
 function getTrackingParams() {
   return window.RX.getAttribution();
 }
@@ -224,12 +357,29 @@ function getTrackingParams() {
 
 function panel(content) { return `<section class="screen panel"><div class="panel-inner">${content}</div></section>`; }
 
+let resultResourcesPrepared = false;
+function prepareResultResources() {
+  if (resultResourcesPrepared) return;
+  resultResourcesPrepared = true;
+  // Download only; the original renderResult still binds and starts the player.
+  const hints = [{"href":"https://scripts.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/players/6abe93baef1e567f6a5759c7/v4/player.js","as":"script"},{"href":"https://scripts.converteai.net/lib/js/smartplayer-wc/v4/smartplayer.js","as":"script"},{"href":"https://cdn.converteai.net/a07c65c7-f155-44ff-8522-402ada1630b9/6abe931f60218bc6eafa5b96/main.m3u8","as":"fetch"}];
+  for (const hint of hints) {
+    if ([...document.querySelectorAll('link[rel="preload"]')].some(link => link.href === hint.href)) continue;
+    const link = document.createElement("link");
+    link.rel = "preload"; link.href = hint.href; link.as = hint.as;
+    link.dataset.rxResultPreload = "1";
+    document.head.appendChild(link);
+  }
+}
+
 function render() {
   window.scrollTo({ top: 0, behavior: "smooth" });
   updateProgress();
   const current=STEPS[state.stepIndex];
   RX.setContext({screen:state.screen,step_index:Math.min(7,state.stepIndex+1),step_id:current?.id,step_type:current?.type});
-  RX.saveCheckpoint(state);
+  if (state.screen === "step" && state.stepIndex >= 5) prepareResultResources();
+  if (state.screen === "lead") return renderLead();
+  if (state.screen === "opening") return renderOpening();
   if (state.screen === "step") return renderStep();
   if (state.screen === "loading") return renderLoading();
   return renderResult();
@@ -239,90 +389,102 @@ function updateProgress() {
   progressLabel.textContent = state.screen === "step" ? `Etapa ${state.stepIndex + 1} de ${STEPS.length}` : "";
 }
 
+function renderLead() {
+  const lead = state.lead || {};
+  root.innerHTML = panel(`
+    <span class="eyebrow">Workshop Raio-X Humano</span>
+    <h1>Preencha seus dados para começar.</h1>
+    <p class="lead">Você receberá o seu resultado e os próximos passos do Workshop Raio-X Humano.</p>
+    <form class="form" id="lead-form" novalidate>
+      <div class="field"><label for="name">Nome completo</label><input id="name" name="name" autocomplete="name" placeholder="Seu nome completo" maxlength="160" value="${escapeHtml(lead.name || "")}" required></div>
+      <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+      <div class="field"><label for="phone">Telefone ( Whatsapp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
+      <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="error" id="form-error" role="alert"></div>
+      <div class="fixed-cta"><button class="button button-primary" type="submit">Continuar</button></div>
+    </form>
+    <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
+  `);
+  document.querySelector("#lead-form").addEventListener("submit", handleLeadSubmit);
+  document.querySelector("#lead-form").addEventListener("input", () => RX.emit("rx_form_start", {screen:"lead"}), {once:true});
+  RX.emit("rx_form_view", {screen:"lead"});
+}
+
 async function handleLeadSubmit(event) {
   event.preventDefault();
   const element=event.currentTarget, button=element.querySelector('button[type="submit"]');
   if(button.disabled)return;
-  RX.emit("rx_form_submit_attempt", {screen:"opening"});
+  RX.emit("rx_form_submit_attempt", {screen:"lead"});
   const form=new FormData(element);
-  const lead={email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
+  const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
-  button.disabled=true;button.textContent="Salvando...";document.querySelector("#form-error").textContent="";
-  try {
-    await RX.saveLead(lead,form.get("company_website"));
-    state.lead=lead;state.leadSaved=true;
-    saveCheckoutPrefill(lead);
-    RX.emit("quiz_start", {screen:"opening"});
-    state.screen="step";
-    render();
-  } catch(_){
-    document.querySelector("#form-error").textContent="Não foi possível confirmar o cadastro. Verifique sua conexão e tente novamente. Seus dados continuam no formulário.";
-    RX.emit("rx_form_submit_error",{error_code:"save_failed"});
-    button.disabled=false;button.textContent="Tentar novamente";
-  }
+  button.disabled=true;document.querySelector("#form-error").textContent="";
+  state.lead=lead;
+  saveCheckoutPrefill(lead);
+  const honey=form.get("company_website");
+  void attemptLeadSave(honey);
+  state.screen="step";
+  render();
 }
 
 function validateLead(lead) {
+  if(lead.name.length<4||lead.name.length>160||lead.name.split(/\s+/).length<2||/[<>@]/.test(lead.name))return {code:"invalid_full_name",message:"Informe seu nome completo, com nome e sobrenome."};
   if(lead.email.length>254||!/^\S+@[^\s@]+\.[^\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
   if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Informe seu WhatsApp com DDD. Para outro país, inclua + e o código do país."};
   return null;
 }
 
+function renderOpening() {
+  if (root.dataset.rxPrerendered !== "opening-v1" || !root.querySelector("#start-button")) {
+    root.innerHTML = panel(`
+    <span class="eyebrow">Workshop Raio-X Humano</span>
+    <h1 class="opening-title">VOU TE ENSINAR COMO ENXERGAR OS TRAUMAS DAS PESSOAS EM SEGUNDOS APENAS OLHANDO O ROSTO E O CORPO.</h1>
+    <figure class="raiox-hero-visual">
+      <img src="/raiox01/raio-x-hero-960.webp" srcset="/raiox01/raio-x-hero-640.webp 640w, /raiox01/raio-x-hero-960.webp 960w, /raiox01/raio-x-hero-1200.webp 1200w, /raiox01/raio-x-hero-wide.webp?v=2 1586w" sizes="(max-width: 520px) calc(100vw - 66px), 440px" fetchpriority="high" loading="eager" decoding="async" alt="Leitura de traços do rosto e comportamento humano" width="1586" height="992">
+      <span class="raiox-scan-line" aria-hidden="true"></span>
+    </figure>
+    <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
+    <ul class="opening-list opening-benefits">
+      <li>Entender melhor as pessoas antes mesmo da primeira conversa.</li>
+      <li>Identificar traços de personalidade e padrões de comportamento.</li>
+      <li>Reconhecer sinais no rosto que indicam experiências emocionais marcantes.</li>
+      <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
+    </ul>
+    <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
+    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer Meu Teste Agora!!</button></div>
+  `);
+  }
+  delete root.dataset.rxPrerendered;
+  document.querySelector("#start-button").dataset.rxReady = "1";
+  document.querySelector("#start-button").removeAttribute("aria-busy");
+  document.querySelector("#start-button").addEventListener("click", () => {
+    state.captureViewed = true;
+    state.screen = "lead";
+    RX.emit("quiz_start", {screen:"opening"});
+    render();
+  });
+  // A click during the non-blocking download is replayed exactly once.
+  if (window.__RX03_START_PENDING) {
+    window.__RX03_START_PENDING = false;
+    document.querySelector("#start-button").click();
+  }
+}
+
 function renderStep() {
   const step = STEPS[state.stepIndex];
   const progress = ((state.stepIndex + 1) / STEPS.length) * 100;
-  const requiresConfirmation = state.stepIndex === 0 && step.type === "question";
-  state.pendingOptionIndex = null;
-
   RX.emit("quiz_step_view", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
   if (step.type === "insight") return renderInsight(step, progress);
-
   root.innerHTML = panel(`
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
     <div class="question-number">${step.label} · etapa ${state.stepIndex + 1} de ${STEPS.length}</div>
     <h2 class="question-title">${step.text}</h2>
     <div class="options" role="radiogroup" aria-label="${step.text}">
-      ${step.options.map((option, index) => `<button class="option" type="button" role="radio" aria-checked="false" data-index="${index}">${option.label}</button>`).join("")}
+      ${step.options.map((option, index) => `<button class="option" type="button" data-index="${index}">${option.label}</button>`).join("")}
     </div>
-    ${requiresConfirmation ? `
-      <div class="question-continue-wrap">
-        <button class="button button-primary question-continue" id="question-continue-button" type="button" disabled>Continuar</button>
-      </div>
-    ` : ""}
   `);
-
-  const continueButton = requiresConfirmation
-    ? document.querySelector("#question-continue-button")
-    : null;
-
-  document.querySelectorAll(".option").forEach((button) => {
-    button.addEventListener("click", () => {
-      const optionIndex = Number(button.dataset.index);
-
-      document.querySelectorAll(".option").forEach((item) => {
-        const selected = item === button;
-        item.classList.toggle("selected", selected);
-        item.setAttribute("aria-checked", selected ? "true" : "false");
-      });
-
-      if (requiresConfirmation) {
-        state.pendingOptionIndex = optionIndex;
-        if (continueButton) continueButton.disabled = false;
-        return;
-      }
-
-      answerStep(step, optionIndex, button, null);
-    });
-  });
-
-  if (continueButton) {
-    continueButton.addEventListener("click", () => {
-      if (!Number.isInteger(state.pendingOptionIndex)) return;
-      const selected = document.querySelector(`.option[data-index="${state.pendingOptionIndex}"]`);
-      if (selected) answerStep(step, state.pendingOptionIndex, selected, continueButton);
-    });
-  }
+  document.querySelectorAll(".option").forEach((button) => button.addEventListener("click", () => answerStep(step, Number(button.dataset.index), button)));
 }
 
 function markStepCompleted(stepId) {
@@ -332,22 +494,25 @@ function markStepCompleted(stepId) {
 function renderInsight(step, progress) {
   root.innerHTML = panel(`
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:${progress}%"></div></div>
-    <span class="eyebrow insight-eyebrow">Ponto de observação</span>
-    <h2 class="insight-title">${step.title}</h2>
+    <span class="eyebrow">Ponto de observação</span>
+    <h2>${step.title}</h2>
     <div class="insight-card">
-      <p class="insight-body">${step.body}</p>
-      <ul class="opening-list insight-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
-      <p class="insight-footer"><strong>${step.footer}</strong></p>
+      <p>${step.body}</p>
+      <ul class="opening-list">${step.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul>
+      <p><strong>${step.footer}</strong></p>
     </div>
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
   RX.emit("quiz_insight_view", {step_id:step.id,step_index:state.stepIndex+1});
-  document.querySelector("#continue-button").addEventListener("click", async () => {
+  document.querySelector("#continue-button").addEventListener("click", () => {
     const button=document.querySelector("#continue-button");button.disabled=true;clearSaveError();
-    try {
-      await RX.saveProgress("quiz_insight_continue", {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
-      markStepCompleted(step.id);state.stepIndex+=1;render();
-    } catch (_) {button.disabled=false;showSaveError("Não conseguimos salvar esta etapa. Verifique sua conexão e toque em Continuar novamente.");}
+    const stepIndex=state.stepIndex+1;
+    const details={step_id:step.id,step_index:stepIndex,step_type:step.type};
+    markStepCompleted(step.id);
+    state.stepIndex+=1;
+    const checkpoint=makeAcknowledgedCheckpoint();
+    queueOperationalSave("insight:"+step.id,"quiz_insight_continue",details,checkpoint);
+    render();
   });
 }
 
@@ -356,37 +521,53 @@ function showSaveError(message){
   clearSaveError();const box=document.createElement("p");box.id="quiz-save-error";box.className="error";box.setAttribute("role","alert");box.textContent=message;
   const target=document.querySelector(".panel-inner");if(target)target.appendChild(box);
 }
-async function answerStep(step, optionIndex, button, continueButton) {
+function answerStep(step, optionIndex, button) {
   const option=step.options[optionIndex];
-  document.querySelectorAll(".option").forEach(item=>item.disabled=true);if(continueButton){continueButton.disabled=true;continueButton.textContent="Salvando...";}button.classList.add("selected");clearSaveError();
+  document.querySelectorAll(".option").forEach(item=>item.disabled=true);button.classList.add("selected");clearSaveError();
+  const stepIndex=state.stepIndex+1;
   const completed=state.completedSteps.includes(step.id)?[...state.completedSteps]:[...state.completedSteps,step.id];
-  try {
-    await RX.saveProgress("quiz_answer", {question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:state.stepIndex+1,option_count:step.options.length,completed_steps:completed});
-    if(option.profile)state.profile=option.profile;
-    state.answers[step.id]=option.label;state.answerIndexes[step.id]=optionIndex;markStepCompleted(step.id);
-    RX.emit("quiz_step_complete",{step_id:step.id,step_index:state.stepIndex+1,step_type:step.type});
-    state.stepIndex+=1;if(state.stepIndex>=STEPS.length)state.screen="loading";render();
-  } catch (_) {
-    document.querySelectorAll(".option").forEach(item=>{item.disabled=false;});
-    if(continueButton){continueButton.disabled=false;continueButton.textContent="Continuar";}
-    showSaveError("Não conseguimos salvar sua resposta. Verifique sua conexão e toque em Continuar novamente.");
-  }
+  const details={question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:stepIndex,option_count:step.options.length,completed_steps:completed};
+  if(option.profile)state.profile=option.profile;
+  state.answers[step.id]=option.label;
+  state.answerIndexes[step.id]=optionIndex;
+  markStepCompleted(step.id);
+  const checkpoint=makeAcknowledgedCheckpoint();
+  queueOperationalSave("answer:"+step.id,"quiz_answer",details,checkpoint);
+  RX.emit("quiz_step_complete",{step_id:step.id,step_index:stepIndex,step_type:step.type});
+  state.stepIndex+=1;
+  if(state.stepIndex>=STEPS.length)state.screen="loading";
+  render();
 }
 
 let completionInFlight=false;
-async function renderLoading() {
-  if(completionInFlight)return;completionInFlight=true;
-  root.innerHTML=panel(`<div class="loading"><div class="loading-ring" aria-hidden="true"></div><h2>Organizando seu resultado...</h2><p>Estamos conectando suas respostas com o caminho mais coerente para você.</p></div>`);
+async function finalizeQuizInBackground() {
+  if(completionInFlight)return;
+  completionInFlight=true;
   try {
-    const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};});
+    await ensureLeadSaved();
+    await flushOperationalSaves();
+    const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{
+      const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];
+      return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};
+    });
     const result=await RX.saveProgress("quiz_complete",{step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]});
     if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==5 || Number(result.quiz_status?.etapas_concluidas)!==7))throw new Error("completion_not_confirmed");
-    state.screen="result";state.resultViewed=true;completionInFlight=false;render();
+    state.leadSaved=true;
+    RX.saveCheckpoint({...state,screen:"result",resultViewed:true});
   } catch (_) {
+    // A UI permanece livre. A fila usa IDs estáveis e o fluxo volta a tentar
+    // em recarregamento/retorno de conexão sem bloquear o usuário.
+    window.addEventListener("online", finalizeQuizInBackground, {once:true});
+  } finally {
     completionInFlight=false;
-    root.innerHTML=panel(`<h2>Precisamos confirmar suas respostas.</h2><p>Não foi possível concluir a gravação agora. Suas respostas continuam nesta página. Toque abaixo para tentar novamente.</p><button class="button button-primary" id="retry-completion" type="button">Tentar salvar novamente</button>`);
-    document.querySelector("#retry-completion").addEventListener("click",renderLoading);
   }
+}
+
+function renderLoading() {
+  state.screen="result";
+  state.resultViewed=true;
+  render();
+  void finalizeQuizInBackground();
 }
 
 function renderResult() {
@@ -458,6 +639,18 @@ function buildCheckoutUrl() {
   url.searchParams.set("src", RAIOX_CONFIG.source);
   if(RX_CONFIG.correlateCheckout)url.searchParams.set("sck",RX.checkoutSck(url.searchParams.get("sck")));
 
+  const lead = getCheckoutPrefill();
+  if (lead) {
+    if (lead.name) url.searchParams.set("name", String(lead.name).trim());
+    if (lead.email) url.searchParams.set("email", String(lead.email).trim().toLowerCase());
+
+    const phone = splitBrazilPhoneForCheckout(lead.phone);
+    if (phone) {
+      url.searchParams.set("phoneac", phone.areaCode);
+      url.searchParams.set("phonenumber", phone.number);
+    }
+  }
+
   return url.toString();
 }
 
@@ -465,28 +658,4 @@ function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-async function bootstrapQuiz() {
-  state.screen = state.screen === "loading" || state.screen === "result" ? state.screen : "step";
-
-  if (!resumed && state.stepIndex === 0 && state.completedSteps.length === 0) {
-    root.innerHTML = panel(`<div class="loading direct-entry-loading"><div class="loading-ring" aria-hidden="true"></div><p>Preparando seu teste...</p></div>`);
-    const started = await RX.emit("quiz_start", {screen:"direct_entry",step_id:STEPS[0].id,step_index:1});
-    if (started?.ok === false) {
-      root.innerHTML = panel(`
-        <div class="direct-entry-error">
-          <h2>Não conseguimos iniciar seu teste agora.</h2>
-          <p>Verifique sua conexão e tente novamente.</p>
-          <button class="button button-primary" id="retry-start-quiz" type="button">Tentar novamente</button>
-        </div>
-      `);
-      document.querySelector("#retry-start-quiz").addEventListener("click", bootstrapQuiz);
-      return;
-    }
-  }
-
-  RX.setContext({screen:"step",step_index:state.stepIndex+1,step_id:STEPS[state.stepIndex]?.id,step_type:STEPS[state.stepIndex]?.type});
-  RX.saveCheckpoint(state);
-  render();
-}
-
-bootstrapQuiz();
+render();
