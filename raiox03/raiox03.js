@@ -866,10 +866,11 @@ function renderResult() {
         </vturb-smartplayer>
       </div>
       <div class="fixed-cta result-fixed-cta" id="checkout-cta">
+        <a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a>
         <div class="checkout-offer-copy">
           <span>Quer aprender a fazer essa leitura na prática?</span>
           <strong>No Workshop Raio-X Humano, você vai aprender ao vivo onde olhar e o que observar no rosto e no corpo.</strong>
-          <p>Escolha sua vaga e continue para o checkout.</p>
+          <p>Veja abaixo as condições do workshop.</p>
         </div>
         <div class="lot-grid" aria-label="Lotes do Workshop Raio-X Humano">
           <div class="lot-card lot-card-current">
@@ -888,7 +889,6 @@ function renderResult() {
             <small>Em breve</small>
           </div>
         </div>
-        <a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a>
       </div>
     </div>
   `);
