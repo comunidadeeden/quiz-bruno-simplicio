@@ -1746,3 +1746,18 @@ input:focus-visible{
     padding-bottom:24px;
   }
 }
+
+
+/* RaioX03 · resultado final simplificado */
+.result-simple.result-vsl-reveal{
+  padding-top:2px;
+}
+.result-simple .result-badge{
+  margin-top:0;
+}
+.result-simple .result-summary{
+  margin-bottom:14px;
+}
+.result-simple .result-vsl-intro{
+  margin-top:4px;
+}
