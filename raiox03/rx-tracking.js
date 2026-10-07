@@ -136,6 +136,7 @@
     Object.keys(trafficKeys).forEach(k=>{const v=safeText(a[trafficKeys[k]]);if(v)traffic[k]=v;});
     w.dataLayer.push({rx:null});
     w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,session_id:sessionId,page_id:'raiox03',quiz_id:'raiox03',page_type:'quiz',launch:cfg.campaignTag||cfg.launch,technical_launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox03',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
+    if(name==='page_view'&&(consent.analytics||consent.advertising))pageAnalyticsTracked=true;
   }
   function payload(name,details,lead) {
     seq+=1;persistRuntime();
