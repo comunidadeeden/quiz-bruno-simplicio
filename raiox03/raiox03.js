@@ -663,6 +663,7 @@ function renderInsight(step, progress) {
     const details={step_id:step.id,step_index:stepIndex,step_type:step.type};
     markStepCompleted(step.id);
     state.stepIndex+=1;
+    if(state.stepIndex>=STEPS.length)state.screen="loading";
     const checkpoint=makeAcknowledgedCheckpoint();
     queueOperationalSave("insight:"+step.id,"quiz_insight_continue",details,checkpoint);
     render();
