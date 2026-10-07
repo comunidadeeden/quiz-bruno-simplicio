@@ -855,19 +855,9 @@ function renderResult() {
   const player = VSL_PLAYERS[vslProfile];
   root.innerHTML = panel(`
     <div class="result-simple result-vsl-reveal">
-      <div class="result-ready-progress">
-        <div class="result-ready-head">
-          <span>Seu Raio-X foi concluído</span>
-          <strong>8/8 respostas analisadas</strong>
-        </div>
-        <div class="result-ready-track"><div class="result-ready-fill"></div></div>
-      </div>
       <span class="result-badge">${result.badge}</span>
       <h1>${result.title}</h1>
       <p class="result-summary">${result.paragraphs?.[0] || ""}</p>
-      <div class="result-highlights">
-        ${renderResultHighlights()}
-      </div>
       <div class="result-vsl-intro">
         <span>Agora veja a explicação do seu resultado</span>
         <strong>Assista ao vídeo abaixo até o momento da oferta.</strong>
