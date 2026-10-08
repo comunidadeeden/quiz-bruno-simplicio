@@ -935,12 +935,12 @@ function renderResult() {
           </div>
           <div class="lot-card">
             <span class="lot-label">2º lote</span>
-            <strong>R$79</strong>
+            <strong>R$97</strong>
             <small>Em breve</small>
           </div>
           <div class="lot-card">
             <span class="lot-label">3º lote</span>
-            <strong>R$147</strong>
+            <strong>R$197</strong>
             <small>Em breve</small>
           </div>
         </div>
