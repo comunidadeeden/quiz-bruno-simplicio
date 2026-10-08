@@ -2275,3 +2275,14 @@ input:focus-visible{
     font-size:16px !important;
   }
 }
+
+
+.opening-question-visual{
+  margin-top:18px;
+  margin-bottom:8px;
+}
+@media (max-width:560px){
+  .opening-question-visual{
+    margin-top:14px;
+  }
+}
