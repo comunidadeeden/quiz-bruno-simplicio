@@ -2199,3 +2199,29 @@ input:focus-visible{
 .question-continue{
   animation:none !important;
 }
+
+
+/* RaioX03 v2: entrada direta no quiz, mantendo o restante do funil intacto. */
+.diagnostic-promise{
+  display:grid;
+  gap:6px;
+  margin:18px 0 22px;
+  padding:14px 16px;
+  border:1px solid rgba(15,27,51,.12);
+  border-radius:14px;
+  background:#f7f9fc;
+}
+.diagnostic-promise strong{
+  font-size:15px;
+  line-height:1.35;
+  color:#0f1b33;
+}
+.diagnostic-promise span{
+  font-size:13px;
+  line-height:1.45;
+  color:#53627a;
+}
+.opening-result-note{
+  margin-top:16px;
+  text-align:center;
+}

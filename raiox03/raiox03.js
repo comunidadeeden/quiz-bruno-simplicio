@@ -64,12 +64,12 @@ const STEPS = [
     id: "situation",
     type: "question",
     label: "Pergunta 1",
-    text: "Em qual situação você mais gostaria de conseguir ler uma pessoa rapidamente?",
+    text: "Hoje, qual dessas opções mais combina com você?",
     options: [
-      { label: "Durante um atendimento", profile: "terapeuta" },
-      { label: "Antes de confiar em alguém", profile: "vida_pessoal" },
-      { label: "Em uma negociação ou trabalho", profile: "profissional_de_pessoas" },
-      { label: "Em relacionamentos pessoais", profile: "vida_pessoal" }
+      { label: "Sou terapeuta e atendo pessoas", profile: "terapeuta" },
+      { label: "Trabalho com atendimento, vendas ou liderança", profile: "profissional_de_pessoas" },
+      { label: "Ainda não atuo, mas quero entender melhor as pessoas", profile: "futuro_terapeuta" },
+      { label: "Quero usar isso principalmente na minha vida pessoal", profile: "vida_pessoal" }
     ]
   },
   {
@@ -533,8 +533,8 @@ function renderLead() {
   const lead = state.lead || {};
   root.innerHTML = panel(`
     <span class="eyebrow">Seu Raio-X já começou</span>
-    <h1>Suas primeiras respostas já foram analisadas.</h1>
-    <p class="lead">Deixe seu e-mail e WhatsApp para continuar o teste e receber o resultado ao final.</p>
+    <h1>Seu resultado já está tomando forma.</h1>
+    <p class="lead">Complete seu e-mail e WhatsApp para continuar o diagnóstico e liberar o seu Raio-X ao final.</p>
     <div class="confirmation-grid lead-previews">
       ${renderConfirmationItems([
         {label:"Onde você mais gostaria de ler alguém rapidamente", value:responseValue("situation")},
@@ -619,41 +619,36 @@ function validateLead(lead) {
 }
 
 function renderOpening() {
-  if (root.dataset.rxPrerendered !== "opening-v1" || !root.querySelector("#start-button")) {
-    root.innerHTML = panel(`
-    <span class="eyebrow">Workshop Raio-X Humano</span>
-    <h1 class="opening-title">DESCUBRA O QUANTO O SEU OLHAR CONSEGUE PERCEBER SOBRE UMA PESSOA, TRAUMAS, FERIDAS COM PAI E MÃE E PADRÕES EMOCIONAIS, APENAS OLHANDO O ROSTO E O CORPO, <span>EM 5 SEGUNDOS!</span></h1>
-    <figure class="raiox-hero-visual">
-      <img class="raiox-hero-board" src="/pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-820.webp" srcset="/pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-320.webp 320w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-460.webp 460w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-620.webp 620w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-820.webp 820w, /pagina03/assets/38bfd18ce4da5fe1a19c461dbde1db0f-1400.webp 1400w" sizes="(max-width: 560px) calc(100vw - 46px), 590px" fetchpriority="high" loading="eager" decoding="async" alt="Mural de investigação com fotos de rostos, anotações e fios vermelhos" width="1400" height="1010">
-      <img class="raiox-hero-specialist" src="/pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-840.webp" srcset="/pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-200.webp 200w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-300.webp 300w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-400.webp 400w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-840.webp 840w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-1420.webp 1420w" sizes="(max-width:560px) 52vw, 330px" fetchpriority="high" loading="eager" decoding="async" alt="Bruno Simplício" width="1420" height="1060">
-      <span class="raiox-scan-line" aria-hidden="true"></span>
-    </figure>
-    <p class="lead opening-promise">Em apenas <strong>2 noites ao vivo</strong>, vou mostrar quais sinais passam despercebidos para a maioria das pessoas e como essa habilidade pode ajudar você a:</p>
-    <ul class="opening-list opening-benefits">
-      <li>Entender melhor as pessoas antes mesmo da primeira conversa.</li>
-      <li>Identificar traços de personalidade e padrões de comportamento.</li>
-      <li>Reconhecer sinais no rosto que indicam experiências emocionais marcantes.</li>
-      <li>Melhorar seus relacionamentos, atendimentos e comunicação.</li>
-    </ul>
-    <p class="lead opening-invitation">Antes de reservar sua vaga no workshop, responda algumas perguntas.</p>
-    <div class="fixed-cta"><button class="button button-primary" id="start-button" type="button">Fazer Meu Teste Agora!!</button></div>
+  const step = STEPS[0];
+  root.innerHTML = panel(`
+    <span class="eyebrow">Raio-X de Percepção</span>
+    <h1 class="opening-title">DESCUBRA O SEU NÍVEL DE PERCEPÇÃO EM <span>8 PERGUNTAS RÁPIDAS</span></h1>
+    <p class="lead opening-promise">Veja o quanto você consegue perceber sobre uma pessoa pelo comportamento, rosto e corpo — e onde seu olhar ainda pode estar deixando sinais passarem despercebidos.</p>
+    <div class="diagnostic-promise">
+      <strong>Seu resultado será montado com base nas suas respostas.</strong>
+      <span>No final, você recebe o seu Raio-X de percepção.</span>
+    </div>
+    <div class="quiz-progress-head">
+      <span>Pergunta 1 de ${QUESTION_STEPS.length}</span>
+      <strong>0% concluído</strong>
+    </div>
+    <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:0%"></div></div>
+    <div class="question-number">${step.label}</div>
+    <h2 class="question-title">${step.text}</h2>
+    <div class="options" role="radiogroup" aria-label="${step.text}">
+      ${step.options.map((option,index)=>`<button class="option" type="button" data-index="${index}">${option.label}</button>`).join("")}
+    </div>
+    <p class="fine-print opening-result-note">Leva poucos minutos. Suas respostas serão usadas para montar o resultado exibido ao final.</p>
   `);
-  }
   delete root.dataset.rxPrerendered;
-  document.querySelector("#start-button").dataset.rxReady = "1";
-  document.querySelector("#start-button").removeAttribute("aria-busy");
-  document.querySelector("#start-button").addEventListener("click", () => {
-    state.screen = "step";
-    RX.emit("quiz_start", {screen:"opening"});
-    render();
-  });
-  // A click during the non-blocking download is replayed exactly once.
-  if (window.__RX03_START_PENDING) {
-    window.__RX03_START_PENDING = false;
-    document.querySelector("#start-button").click();
-  }
+  document.querySelectorAll(".option").forEach((button)=>button.addEventListener("click",()=>{
+    if(button.disabled)return;
+    state.screen="step";
+    RX.emit("quiz_start",{screen:"opening"});
+    RX.emit("quiz_step_view",{step_id:step.id,step_index:1,step_type:step.type});
+    answerStep(step,Number(button.dataset.index),button);
+  }));
 }
-
 function renderStep() {
   const step = STEPS[state.stepIndex];
   const qNumber = questionNumberFor(step);
