@@ -956,6 +956,15 @@ function renderResult() {
     if(cta){
       cta.classList.add("visible");
       RX.emit("rx_cta_view",{element_id:"checkout-button",cta_delay_seconds:RAIOX_CONFIG.ctaDelaySeconds});
+      window.setTimeout(() => {
+        const button=document.querySelector("#checkout-button");
+        if(button){
+          button.scrollIntoView({
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+            block: "center"
+          });
+        }
+      }, 250);
     }
   }, RAIOX_CONFIG.ctaDelaySeconds * 1000);
   document.querySelector("#checkout-button").addEventListener("click", () => {
