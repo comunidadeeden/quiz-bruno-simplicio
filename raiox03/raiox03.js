@@ -89,17 +89,17 @@ const STEPS = [
     type: "insight",
     eyebrow: "Primeira confirmação",
     progressText: "Seu resultado já começou a tomar forma.",
-    title: "Você não quer apenas observar melhor. Você quer perceber antes.",
-    body: "Suas primeiras respostas mostram que o maior valor dessa habilidade está em reduzir o tempo entre notar um sinal e entender o que ele pode significar.",
-    bullets: ["perceber incoerências mais cedo", "ter mais critério antes de confiar", "tomar decisões com mais segurança"],
-    footer: "Agora vamos descobrir como você já faz essa leitura hoje — mesmo sem perceber.",
+    title: "Você já deu os primeiros sinais de como observa as pessoas.",
+    body: "Agora vamos identificar onde seu olhar vai primeiro e qual dificuldade mais atrapalha sua leitura hoje.",
+    bullets: ["onde seu olhar começa", "o que você percebe primeiro", "onde sua interpretação trava"],
+    footer: "Leva poucos segundos para continuar.",
     button: "Continuar meu Raio-X"
   },
   {
     id: "attention_focus",
     type: "question",
     label: "Pergunta 3",
-    text: "Hoje, quando você conhece alguém, em que você mais presta atenção?",
+    text: "Quando você conhece alguém, qual é a primeira coisa que costuma observar?",
     options: [
       { label: "No que ela fala" },
       { label: "No comportamento" },
@@ -123,12 +123,12 @@ const STEPS = [
     id: "recurring_signal",
     type: "question",
     label: "Pergunta 5",
-    text: "Qual dessas situações acontece mais com você?",
+    text: "Qual é a sua maior dificuldade hoje ao tentar interpretar os sinais de uma pessoa?",
     options: [
-      { label: "A pessoa fala uma coisa, mas sinto que tem algo diferente" },
-      { label: "Só descubro quem ela realmente é depois de muito tempo" },
-      { label: "Percebo sinais, mas não sei interpretar" },
-      { label: "Tenho dificuldade de confiar na minha percepção" }
+      { label: "Percebo que algo não combina com o que ela fala" },
+      { label: "Só entendo o padrão depois de muito tempo" },
+      { label: "Percebo sinais, mas não sei o que eles significam" },
+      { label: "Fico em dúvida se posso confiar no que percebi" }
     ]
   },
   {
@@ -136,10 +136,10 @@ const STEPS = [
     type: "insight",
     eyebrow: "Segunda confirmação",
     progressText: "Seu padrão de percepção ficou mais claro.",
-    title: "Você provavelmente já percebe mais sinais do que consegue interpretar.",
-    body: "O problema não parece ser falta de percepção. É não ter um mapa claro para transformar sensação, comportamento, rosto e corpo em critérios de observação.",
-    bullets: ["o que observar primeiro", "como comparar sinais", "como separar impressão de padrão"],
-    footer: "As próximas respostas vão mostrar o que você mais quer aprender a identificar.",
+    title: "Você já percebe sinais. O ponto é transformar percepção em leitura.",
+    body: "Suas respostas indicam onde você observa melhor e onde ainda falta um mapa claro para interpretar o que está vendo.",
+    bullets: ["observar com critério", "interpretar padrões", "reduzir dúvida na leitura"],
+    footer: "Agora vamos descobrir o que você mais quer identificar.",
     button: "Quero continuar"
   },
   {
@@ -170,12 +170,12 @@ const STEPS = [
     id: "intuition_ignored",
     type: "question",
     label: "Pergunta 8",
-    text: "Você já teve a sensação de que havia algo errado em alguém, mas ignorou?",
+    text: "Quando sua percepção diz que algo não está certo em alguém, o que costuma acontecer?",
     options: [
-      { label: "Sim, muitas vezes" },
-      { label: "Algumas vezes" },
-      { label: "Raramente" },
-      { label: "Nunca percebi isso" }
+      { label: "Confio na minha percepção e observo melhor" },
+      { label: "Percebo, mas ainda fico em dúvida" },
+      { label: "Costumo ignorar e só confirmo depois" },
+      { label: "Raramente percebo esse tipo de sinal" }
     ]
   },
   {
@@ -183,11 +183,11 @@ const STEPS = [
     type: "insight",
     eyebrow: "Última confirmação",
     progressText: "Seu Raio-X está quase pronto.",
-    title: "Agora já dá para entender onde essa habilidade teria mais impacto para você.",
-    body: "Seu resultado vai combinar onde você mais precisa dessa leitura, como você percebe sinais hoje e o que gostaria de identificar com mais segurança.",
-    bullets: ["seu contexto principal", "seu nível atual de percepção", "o tipo de leitura que mais gera valor para você"],
-    footer: "Na próxima tela vamos organizar suas respostas e preparar o seu resultado.",
-    button: "Preparar meu resultado"
+    title: "Já temos informação suficiente para montar o seu resultado.",
+    body: "Vamos cruzar seu contexto, sua forma de observar e a principal dificuldade que apareceu nas suas respostas.",
+    bullets: ["seu contexto", "seu padrão de observação", "seu principal ponto de melhoria"],
+    footer: "Na próxima tela você verá o seu Raio-X de percepção.",
+    button: "Ver meu resultado"
   }
 ];
 
@@ -448,13 +448,13 @@ function confirmationItems(stepId) {
     return [
       {label:"Onde seu olhar vai primeiro", value:responseValue("attention_focus")},
       {label:"Onde identificar padrões teria mais valor", value:responseValue("emotional_value")},
-      {label:"O padrão que mais acontece hoje", value:responseValue("recurring_signal")}
+      {label:"Sua maior dificuldade de interpretação", value:responseValue("recurring_signal")}
     ];
   }
   return [
     {label:"O que você mais quer descobrir", value:responseValue("desired_discovery")},
     {label:"O primeiro resultado que você busca", value:responseValue("first_result")},
-    {label:"Sobre ignorar sua percepção", value:responseValue("intuition_ignored")}
+    {label:"Como você reage à própria percepção", value:responseValue("intuition_ignored")}
   ];
 }
 
@@ -537,7 +537,7 @@ function renderLead() {
     <p class="lead">Complete seu e-mail e WhatsApp para continuar o diagnóstico e liberar o seu Raio-X ao final.</p>
     <div class="confirmation-grid lead-previews">
       ${renderConfirmationItems([
-        {label:"Onde você mais gostaria de ler alguém rapidamente", value:responseValue("situation")},
+        {label:"Qual contexto mais combina com você", value:responseValue("situation")},
         {label:"O que mais incomoda ao julgar alguém errado", value:responseValue("judgment_error")}
       ])}
     </div>
