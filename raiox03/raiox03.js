@@ -608,7 +608,10 @@ async function handleLeadSubmit(event) {
   void attemptLeadSave(honey);
   state.captureViewed = true;
   state.screen="step";
+  const active=document.activeElement;
+  if(active && typeof active.blur==="function") active.blur();
   render();
+  window.requestAnimationFrame(()=>window.scrollTo({top:0,behavior:"auto"}));
 }
 
 function validateLead(lead) {
@@ -633,6 +636,10 @@ function renderOpening() {
       <strong>0% concluído</strong>
     </div>
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:0%"></div></div>
+    <div class="start-cue" aria-hidden="true">
+      <span class="start-cue-text">Escolha uma opção abaixo para começar</span>
+      <span class="start-cue-arrow">↓</span>
+    </div>
     <div class="question-number">${step.label}</div>
     <h2 class="question-title">${step.text}</h2>
     <div class="options" role="radiogroup" aria-label="${step.text}">
