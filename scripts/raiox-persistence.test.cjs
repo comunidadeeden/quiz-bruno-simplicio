@@ -20,7 +20,7 @@ function harness(page,checkpoint=null){
     saveProgress:async(name,details)=>{writes.push({name,details});return ack();}};
   const doc={querySelector:selector=>({'#quiz-root':root,'#progress-label':node(),'#form-error':error,'#quiz-save-error':saveError,'#quiz-save-retry':retry,'#continue-button':continueButton,'.panel-inner':node()}[selector]||null),
     querySelectorAll:selector=>selector==='.option'?options:[],createElement:()=>node(),addEventListener(){},head:node()};
-  const win={RX,RX_CONFIG:{webhookUrl:'https://example.invalid/collect'},addEventListener(){},removeEventListener(){},scrollTo(){},setTimeout,clearTimeout};
+  const win={RX,RX_CONFIG:{webhookUrl:'https://example.invalid/collect'},addEventListener(){},removeEventListener(){},scrollTo(){},setTimeout,clearTimeout,requestAnimationFrame:fn=>fn()};
   const context=vm.createContext({window:win,document:doc,RX,RX_CONFIG:win.RX_CONFIG,URL,URLSearchParams,console,setTimeout,clearTimeout,
     sessionStorage:{setItem:(k,v)=>storage.set(k,v),getItem:k=>storage.get(k)||null},
     FormData:class{constructor(f){this.values={...f.values};}get(k){return this.values[k]??null;}},
@@ -139,3 +139,39 @@ for(const page of ['raiox01','raiox02']){
     assert.equal(h.run('state.screen'),'result');
   });
 }
+
+for(const outcome of ['pending','rejected','invalid_ack','honey','invalid_email']) {
+  test(`raiox03: lead gate ${outcome} preserves pre-lead answers and allows a valid retry`, async()=>{
+    const h=harness('raiox03'), d=deferred();let calls=0;
+    h.run('state.screen="lead";state.stepIndex=2;state.completedSteps=["situation","judgment_error"];state.answerIndexes={situation:0,judgment_error:0};acknowledgeCheckpoint(makeAcknowledgedCheckpoint());');
+    h.RX.saveLead=async(lead,honey)=>{calls++;if(honey)throw new Error('invalid_form');return d.promise;};
+    if(outcome==='honey')h.values.company_website='bot';
+    if(outcome==='invalid_email')h.values.email='not-an-email';
+    const pending=h.run('handleLeadSubmit(testEvent)');await tick();
+    if(outcome==='pending'){
+      assert.equal(h.button.disabled,true);assert(h.inputs.every(x=>x.disabled));
+      await h.run('handleLeadSubmit(testEvent)');assert.equal(calls,1);
+    }
+    assert.equal(h.run('state.screen'),'lead');assert.equal(h.run('state.leadSaved'),false);
+    assert.equal(h.checkpoints.length,0);assert.equal(h.storage.size,0);
+    if(outcome==='rejected')d.reject(new Error('network'));
+    else d.resolve(outcome==='invalid_ack'?{ok:true,stored:false}:ack());
+    await pending;
+    if(outcome!=='pending'){
+      assert.equal(h.run('state.screen'),'lead');assert.equal(h.run('state.leadSaved'),false);
+      assert.equal(h.checkpoints.length,0);assert.equal(h.button.disabled,false);
+      if(outcome==='invalid_email')assert.equal(calls,0);
+      h.values.email='integridade@example.invalid';h.values.company_website='';h.RX.saveLead=async()=>ack();
+      await h.run('handleLeadSubmit(testEvent)');
+    }
+    assert.equal(h.run('state.screen'),'step');assert.equal(h.run('state.leadSaved'),true);
+    assert.equal(h.run('state.stepIndex'),2);assert.equal(h.button.disabled,false);
+    assert.deepEqual(h.checkpoints.at(-1).completedSteps,['situation','judgment_error']);
+    assert.equal(h.checkpoints.at(-1).leadSaved,true);
+  });
+}
+test('raiox03: existing acknowledged session resumes with the same answers',()=>{
+ const cp={leadSaved:true,screen:'step',completedSteps:['situation','judgment_error'],answerIndexes:{situation:0,judgment_error:1}};
+ const h=harness('raiox03',cp);assert.equal(h.run('state.screen'),'step');assert.equal(h.run('state.stepIndex'),2);
+ assert.equal(h.run('state.answerIndexes.judgment_error'),1);assert.equal(h.run('state.lead'),null);
+});

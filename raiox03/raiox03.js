@@ -270,11 +270,7 @@ function createState() {
 
 let leadSavePromise = null;
 let leadSaveInFlight = false;
-let leadRetryTimer = null;
-let leadRetryAttempt = 0;
-let leadSaveErrorReported = false;
 let leadPersistenceBlocked = false;
-const LEAD_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000, 60000];
 const pendingOperationalSaves = new Map();
 let lastAcknowledgedCheckpoint = null;
 
@@ -295,51 +291,32 @@ function acknowledgeCheckpoint(snapshot) {
   if (state.leadSaved) RX.saveCheckpoint(snapshot);
 }
 
-function clearLeadRetryTimer() {
-  if (leadRetryTimer) window.clearTimeout(leadRetryTimer);
-  leadRetryTimer = null;
-}
-
-function markLeadSaved() {
-  state.leadSaved = true;
-  clearLeadRetryTimer();
-  leadRetryAttempt = 0;
-  if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
-}
-
-function scheduleLeadRetry() {
-  if (state.leadSaved || leadPersistenceBlocked || !state.lead || leadRetryTimer) return;
-  if (leadRetryAttempt >= LEAD_RETRY_DELAYS_MS.length) return;
-  const delay = LEAD_RETRY_DELAYS_MS[leadRetryAttempt++];
-  leadRetryTimer = window.setTimeout(() => {
-    leadRetryTimer = null;
-    void attemptLeadSave("");
-  }, delay);
+function requireStoredAck(result) {
+  if (!result || result.ok !== true || result.stored !== true) throw new Error("persistence_not_confirmed");
+  return result;
 }
 
 function attemptLeadSave(honey = "") {
-  if (state.leadSaved) return Promise.resolve(true);
-  if (String(honey || "").trim()) leadPersistenceBlocked = true;
-  if (leadPersistenceBlocked || !state.lead) return Promise.resolve(false);
   if (leadSaveInFlight && leadSavePromise) return leadSavePromise;
-
+  if (!state.lead) return Promise.resolve(false);
+  leadPersistenceBlocked = Boolean(String(honey || "").trim());
   leadSaveInFlight = true;
-  leadSavePromise = RX.saveLead(state.lead, honey)
-    .then(() => {
-      markLeadSaved();
+  const submittedLead = {...state.lead};
+  // RX preserves event IDs for retries and resolves only after a matching ACK.
+  // No detached retries that could acknowledge edited form data.
+  leadSavePromise = Promise.resolve()
+    .then(() => RX.saveLead(submittedLead, honey))
+    .then(result => {
+      requireStoredAck(result);
+      state.leadSaved = true;
       return true;
     })
     .catch(() => {
-      if (!leadSaveErrorReported) {
-        leadSaveErrorReported = true;
-        RX.emit("rx_form_submit_error", {error_code:"save_failed"});
-      }
-      scheduleLeadRetry();
+      state.leadSaved = false;
+      RX.emit("rx_form_submit_error", {error_code:leadPersistenceBlocked ? "invalid_form" : "save_failed"});
       return false;
     })
-    .finally(() => {
-      leadSaveInFlight = false;
-    });
+    .finally(() => { leadSaveInFlight = false; });
   return leadSavePromise;
 }
 
@@ -359,15 +336,8 @@ function queueOperationalSave(key, name, details, checkpoint, options = {}) {
 
 async function ensureLeadSaved() {
   if (state.leadSaved) return true;
-  if (leadPersistenceBlocked) throw new Error("lead_not_available");
-  if (leadSavePromise) {
-    const saved = await leadSavePromise;
-    if (saved) return true;
-  }
-  if (!state.lead) throw new Error("lead_not_available");
-  const saved = await attemptLeadSave("");
-  if (!saved) throw new Error("lead_not_confirmed");
-  return true;
+  if (leadSaveInFlight && leadSavePromise && await leadSavePromise) return true;
+  throw new Error("lead_not_confirmed");
 }
 
 async function flushOperationalSaves() {
@@ -390,16 +360,7 @@ async function flushOperationalSaves() {
 }
 
 window.addEventListener("online", () => {
-  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
-  if (pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
-});
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden" && state.lead && !state.leadSaved && !leadPersistenceBlocked) {
-    void attemptLeadSave("");
-  }
-});
-window.addEventListener("pagehide", () => {
-  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
+  if (state.leadSaved && pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
 });
 
 function getTrackingParams() {
@@ -547,7 +508,7 @@ function renderLead() {
         <span>Seu resultado já está sendo montado.</span>
       </div>
       <form class="form" id="lead-form" novalidate>
-        <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="text" inputmode="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+        <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="email" inputmode="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
         <div class="field">
           <label for="phone">Telefone (WhatsApp):</label>
           <div class="phone-field">
@@ -597,7 +558,7 @@ function renderLead() {
 async function handleLeadSubmit(event) {
   event.preventDefault();
   const element=event.currentTarget, button=element.querySelector('button[type="submit"]');
-  if(button.disabled)return;
+  if(button.disabled || leadSaveInFlight)return;
   RX.emit("rx_form_submit_attempt", {screen:"lead", step_index:state.stepIndex+1});
   const form=new FormData(element);
   const rawPhone=String(form.get("phone")||"").trim();
@@ -607,13 +568,31 @@ async function handleLeadSubmit(event) {
   const lead={name:"",email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(combinedPhone),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
-  button.disabled=true;document.querySelector("#form-error").textContent="";
-  state.lead=lead;
+  const label = button.textContent;
+  const controls = [...element.querySelectorAll("input,select,textarea")].map(input => ({input,disabled:input.disabled}));
+  button.disabled = true; button.textContent = "Salvando..."; button.setAttribute("aria-busy", "true");
+  controls.forEach(({input}) => input.disabled = true);
+  document.querySelector("#form-error").textContent = "";
+  state.lead = lead;
+  state.leadSaved = false;
+  let saved = false;
+  try {
+    saved = await attemptLeadSave(form.get("company_website"));
+  } finally {
+    controls.forEach(({input,disabled}) => input.disabled = disabled);
+    button.disabled = false; button.textContent = label; button.removeAttribute("aria-busy");
+  }
+  if (!saved) {
+    document.querySelector("#form-error").textContent = leadPersistenceBlocked
+      ? "Não foi possível validar o cadastro. Recarregue a página e preencha novamente."
+      : "Não conseguimos salvar seu cadastro. Seus dados continuam preenchidos; confira sua conexão e tente novamente.";
+    return;
+  }
   saveCheckoutPrefill(lead);
-  const honey=form.get("company_website");
-  void attemptLeadSave(honey);
   state.captureViewed = true;
   state.screen="step";
+  // Only persist answers whose collector requests have already been acknowledged.
+  if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
   const active=document.activeElement;
   if(active && typeof active.blur==="function") active.blur();
   render();
@@ -623,6 +602,7 @@ async function handleLeadSubmit(event) {
 function validateLead(lead) {
   if(!lead.email)return {code:"email_required",message:"Informe seu e-mail para continuar."};
   if(lead.email.length>254)return {code:"email_too_long",message:"O e-mail informado é muito longo."};
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email))return {code:"invalid_email",message:"Informe um e-mail válido."};
   if(!/^\+[1-9]\d{7,14}$/.test(lead.phone))return {code:"invalid_phone",message:"Confira o país e informe seu WhatsApp com DDD."};
   return null;
 }

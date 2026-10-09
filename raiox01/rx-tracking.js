@@ -125,15 +125,18 @@
   w.dataLayer=w.dataLayer||[];
   const dlSeen=new Set();
   const analyticKeys=['screen','step_id','step_index','step_type','question_id','question_index','option_count','error_code','element_id','link_domain','scroll_percent','active_seconds','video_id','video_percent','video_seconds','video_duration','is_autoplay','cta_delay_seconds','currency','value','load_ms','metric'];
-  function publicEvent(name,id,details={}) {
+  function publicEvent(name,id,details={},options={}) {
     if(cfg.testMode) return;
-    if(dlSeen.has(id+':'+name))return;dlSeen.add(id+':'+name);
+    const seenKey=id+':'+name;
+    if(dlSeen.has(seenKey)&&options.force!==true)return;
+    dlSeen.add(seenKey);
     const params={session_id:sessionId};analyticKeys.forEach(k=>{const v=details[k];if(v===undefined||v===null)return;if(typeof v==='number'&&Number.isFinite(v)||typeof v==='boolean')params[k]=v;else if(typeof v==='string'&&v.length<=100&&!v.includes('@'))params[k]=v;});
     const traffic={},a=currentAttribution();
     const trafficKeys={campaign_source:'utm_source',campaign_medium:'utm_medium',campaign_name:'utm_campaign',campaign_content:'utm_content',campaign_term:'utm_term',campaign_id:'utm_id'};
     Object.keys(trafficKeys).forEach(k=>{const v=safeText(a[trafficKeys[k]]);if(v)traffic[k]=v;});
     w.dataLayer.push({rx:null});
     w.dataLayer.push({event:'rx_event',rx:{name:name,event_id:id,session_id:sessionId,quiz_id:'raiox01',launch:cfg.campaignTag||cfg.launch,technical_launch:cfg.launch,page_location:safeUrl(location.href),page_referrer:consent.analytics?safeUrl(d.referrer):'',source:'quiz_raiox01',analytics:consent.analytics,advertising:consent.advertising,test_mode:false,traffic:traffic,params:params}});
+    if(name==='page_view'&&(consent.analytics||consent.advertising))pageAnalyticsTracked=true;
   }
   function payload(name,details,lead) {
     seq+=1;persistRuntime();
@@ -231,7 +234,7 @@
     if(!pageAnalyticsTracked&&!cfg.testMode&&(consent.analytics||consent.advertising)){
       pageAnalyticsTracked=true;
       // PageView para medição após consentimento, sem repetir a inicialização no banco.
-      publicEvent('page_view',bootstrapEvent.event_id,{screen:context.screen});
+      publicEvent('page_view',bootstrapEvent.event_id,{screen:context.screen},{force:true});
     }
   }
   function ensureMetaBase(){

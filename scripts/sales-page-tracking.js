@@ -11,7 +11,7 @@
     pageId,
     source: pageId,
     pageType: "sales_page",
-    launch: "BS06OUT2026",
+    launch: "BS13OUT2026",
     endpoint: "https://nklqcamhkwqictdmictb.supabase.co/functions/v1/sales-page-collect",
     currency: "BRL",
     value: 47,
@@ -65,6 +65,7 @@
   };
   if (!state.cta_view_event_ids || typeof state.cta_view_event_ids !== "object" || Array.isArray(state.cta_view_event_ids)) state.cta_view_event_ids = {};
   if (!state.cta_click_event_ids || typeof state.cta_click_event_ids !== "object" || Array.isArray(state.cta_click_event_ids)) state.cta_click_event_ids = {};
+  if (!state.cta_click_sent_positions || typeof state.cta_click_sent_positions !== "object" || Array.isArray(state.cta_click_sent_positions)) state.cta_click_sent_positions = {};
   saveState();
 
   const eventIdForCta = (bucket, ctaPosition) => {
@@ -396,18 +397,26 @@
     sendQualityEvidence(event, "checkout", link);
     trackCtaView(link);
 
-    if (properties.cta_index) {
+    if (properties.cta_index && state.cta_click_sent_positions[properties.cta_position] !== true) {
       const ctaClickEventId = eventIdForCta("click", properties.cta_position);
+      const clickPayload = payload("cta_click", ctaClickEventId, properties);
+      // Queue before recording the logical send: navigation must not lose retries.
+      enqueue(clickPayload);
+      state.cta_click_sent_positions[properties.cta_position] = true;
+      saveState();
       pushGtm("rx_sales_page_cta_click", ctaClickEventId, properties);
-      void send(payload("cta_click", ctaClickEventId, properties));
+      void send(clickPayload);
     }
 
-    if (!validUuid(state.checkout_event_id)) {
-      state.checkout_event_id = uuid();
+    if (state.checkout_event_sent !== true) {
+      if (!validUuid(state.checkout_event_id)) state.checkout_event_id = uuid();
+      const checkoutPayload = payload("checkout_click", state.checkout_event_id, properties);
+      enqueue(checkoutPayload);
+      state.checkout_event_sent = true;
       saveState();
+      pushGtm("rx_checkout_click", state.checkout_event_id, properties);
+      void send(checkoutPayload);
     }
-    pushGtm("rx_checkout_click", state.checkout_event_id, properties);
-    void send(payload("checkout_click", state.checkout_event_id, properties));
   }, { capture: true });
 
   let resizeTimer = 0;
