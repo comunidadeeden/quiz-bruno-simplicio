@@ -568,7 +568,7 @@ function renderLead() {
             <option value="+41">🇨🇭 +41</option>
             <option value="+43">🇦🇹 +43</option>
           </select>
-          <input id="phone" name="phone" type="tel" inputmode="tel" maxlength="24" autocomplete="tel" placeholder="38 99864-4885" value="" required>
+          <input id="phone" name="phone" type="tel" inputmode="tel" maxlength="24" autocomplete="tel" placeholder="34 99999-9999" value="" required>
         </div>
       </div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
