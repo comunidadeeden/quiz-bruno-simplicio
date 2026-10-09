@@ -2347,3 +2347,53 @@ input:focus-visible{
     border-radius:16px;
   }
 }
+
+
+/* RaioX03: green selection/actions + better DDI sizing */
+.option{
+  border-color:#cbd5e1;
+}
+.option:hover,
+.option:focus-visible{
+  border-color:#16a34a;
+}
+.option.selected{
+  border-color:#16a34a;
+  background:#f0fdf4;
+  color:#14532d;
+  box-shadow:0 8px 20px rgba(22,163,74,.12);
+}
+
+#lead-submit-button,
+.button-primary{
+  background:#16a34a;
+  color:#fff;
+  box-shadow:0 14px 28px rgba(22,163,74,.22);
+}
+#lead-submit-button:hover,
+.button-primary:hover{
+  background:#15803d;
+}
+
+.phone-field{
+  grid-template-columns:minmax(92px,110px) minmax(0,1fr);
+}
+#country-code{
+  min-width:0;
+  width:100%;
+  padding-left:10px;
+  padding-right:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  overflow:hidden;
+}
+@media (max-width:420px){
+  .phone-field{
+    grid-template-columns:minmax(88px,96px) minmax(0,1fr);
+  }
+  #country-code{
+    padding-left:8px;
+    padding-right:6px;
+    font-size:16px !important;
+  }
+}
