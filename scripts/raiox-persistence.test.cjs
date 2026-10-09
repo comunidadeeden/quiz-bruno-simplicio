@@ -140,36 +140,43 @@ for(const page of ['raiox01','raiox02']){
   });
 }
 
-for(const outcome of ['pending','rejected','invalid_ack','honey','invalid_email']) {
-  test(`raiox03: lead gate ${outcome} preserves pre-lead answers and allows a valid retry`, async()=>{
+for(const outcome of ['pending','rejected','invalid_ack','honey']) {
+  test(`raiox03: ${outcome} save never blocks navigation; only confirmed data is checkpointed`, async()=>{
     const h=harness('raiox03'), d=deferred();let calls=0;
     h.run('state.screen="lead";state.stepIndex=2;state.completedSteps=["situation","judgment_error"];state.answerIndexes={situation:0,judgment_error:0};acknowledgeCheckpoint(makeAcknowledgedCheckpoint());');
     h.RX.saveLead=async(lead,honey)=>{calls++;if(honey)throw new Error('invalid_form');return d.promise;};
     if(outcome==='honey')h.values.company_website='bot';
-    if(outcome==='invalid_email')h.values.email='not-an-email';
-    const pending=h.run('handleLeadSubmit(testEvent)');await tick();
-    if(outcome==='pending'){
-      assert.equal(h.button.disabled,true);assert(h.inputs.every(x=>x.disabled));
-      await h.run('handleLeadSubmit(testEvent)');assert.equal(calls,1);
-    }
-    assert.equal(h.run('state.screen'),'lead');assert.equal(h.run('state.leadSaved'),false);
-    assert.equal(h.checkpoints.length,0);assert.equal(h.storage.size,0);
+    await h.run('handleLeadSubmit(testEvent)');await tick();
+    assert.equal(h.run('state.screen'),'step');assert.equal(h.run('state.stepIndex'),2);
+    assert.equal(h.run('state.leadSaved'),false);assert.equal(h.checkpoints.length,0);
+    await h.run('handleLeadSubmit(testEvent)');assert.equal(calls,1);
     if(outcome==='rejected')d.reject(new Error('network'));
     else d.resolve(outcome==='invalid_ack'?{ok:true,stored:false}:ack());
-    await pending;
-    if(outcome!=='pending'){
-      assert.equal(h.run('state.screen'),'lead');assert.equal(h.run('state.leadSaved'),false);
-      assert.equal(h.checkpoints.length,0);assert.equal(h.button.disabled,false);
-      if(outcome==='invalid_email')assert.equal(calls,0);
-      h.values.email='integridade@example.invalid';h.values.company_website='';h.RX.saveLead=async()=>ack();
-      await h.run('handleLeadSubmit(testEvent)');
+    await h.run('leadSavePromise');
+    if(outcome==='pending'){
+      assert.equal(h.run('state.leadSaved'),true);
+      assert.deepEqual(h.checkpoints.at(-1).completedSteps,['situation','judgment_error']);
+    }else{
+      assert.equal(h.run('state.leadSaved'),false);assert.equal(h.checkpoints.length,0);
+      assert.equal(h.run('state.screen'),'step');
+      if(outcome==='honey'){
+        assert.equal(h.run('leadRetryTimer'),null);await h.run('attemptLeadSave()');assert.equal(calls,1);
+      }else{
+        assert.notEqual(h.run('leadRetryTimer'),null);
+        // A later successful background retry flushes answers collected in the meantime.
+        h.run('queueOperationalSave("later", "quiz_answer", {step_id:"attention_focus"}, makeAcknowledgedCheckpoint())');await tick();
+        h.RX.saveLead=async()=>ack();await h.run('attemptLeadSave()');await tick();await tick();
+        assert.equal(h.run('state.leadSaved'),true);assert.equal(h.run('leadRetryTimer'),null);
+        assert(h.writes.some(x=>x.name==='quiz_answer'));assert.equal(h.run('pendingOperationalSaves.size'),0);
+      }
     }
-    assert.equal(h.run('state.screen'),'step');assert.equal(h.run('state.leadSaved'),true);
-    assert.equal(h.run('state.stepIndex'),2);assert.equal(h.button.disabled,false);
-    assert.deepEqual(h.checkpoints.at(-1).completedSteps,['situation','judgment_error']);
-    assert.equal(h.checkpoints.at(-1).leadSaved,true);
+    h.run('clearLeadRetryTimer()');
   });
 }
+test('raiox03: malformed email is checked locally without any lead request',async()=>{
+ const h=harness('raiox03');h.run('state.screen="lead"');h.values.email='invalid';await h.run('handleLeadSubmit(testEvent)');
+ assert.equal(h.writes.length,0);assert.equal(h.run('state.screen'),'lead');assert.match(h.error.textContent,/válido/);
+});
 test('raiox03: existing acknowledged session resumes with the same answers',()=>{
  const cp={leadSaved:true,screen:'step',completedSteps:['situation','judgment_error'],answerIndexes:{situation:0,judgment_error:1}};
  const h=harness('raiox03',cp);assert.equal(h.run('state.screen'),'step');assert.equal(h.run('state.stepIndex'),2);
