@@ -2286,3 +2286,64 @@ input:focus-visible{
     margin-top:14px;
   }
 }
+
+
+/* RaioX03 lead capture emphasis */
+.lead-capture-box{
+  width:min(100%,580px);
+  margin:22px auto 0;
+  border:2px solid #17365d;
+  border-radius:18px;
+  padding:18px;
+  background:#eef5ff;
+  box-shadow:0 14px 34px rgba(23,54,93,.10);
+}
+.lead-capture-header{
+  display:grid;
+  gap:4px;
+  margin-bottom:14px;
+  text-align:center;
+}
+.lead-capture-header strong{
+  color:#17365d;
+  font-size:16px;
+  line-height:1.3;
+}
+.lead-capture-header span{
+  color:#52647b;
+  font-size:13px;
+  line-height:1.4;
+}
+.lead-capture-box .form{
+  margin-top:0;
+}
+.lead-capture-box .field label{
+  color:#17365d;
+  font-size:14px;
+}
+.lead-capture-box #email,
+.lead-capture-box #phone,
+.lead-capture-box #country-code{
+  min-height:56px;
+  border:2px solid #b7c7db;
+  background:#fff !important;
+  color:#10243f;
+  box-shadow:0 2px 0 rgba(23,54,93,.02);
+}
+.lead-capture-box #email:focus,
+.lead-capture-box #phone:focus,
+.lead-capture-box #country-code:focus{
+  border-color:#17365d;
+  outline:3px solid rgba(23,54,93,.14);
+  outline-offset:1px;
+}
+.lead-capture-box #lead-submit-button{
+  min-height:56px;
+  font-size:16px;
+}
+@media (max-width:520px){
+  .lead-capture-box{
+    padding:16px 14px;
+    border-radius:16px;
+  }
+}

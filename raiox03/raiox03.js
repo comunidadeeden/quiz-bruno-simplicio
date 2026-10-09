@@ -541,11 +541,16 @@ function renderLead() {
         {label:"O que mais incomoda ao julgar alguém errado", value:responseValue("judgment_error")}
       ])}
     </div>
-    <form class="form" id="lead-form" novalidate>
-      <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="text" inputmode="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
-      <div class="field">
-        <label for="phone">Telefone (WhatsApp):</label>
-        <div class="phone-field">
+    <div class="lead-capture-box">
+      <div class="lead-capture-header">
+        <strong>Complete seus dados para continuar</strong>
+        <span>Seu resultado já está sendo montado.</span>
+      </div>
+      <form class="form" id="lead-form" novalidate>
+        <div class="field"><label for="email">Digite seu melhor e-mail:</label><input id="email" name="email" type="text" inputmode="email" maxlength="254" autocomplete="email" placeholder="voce@email.com" value="${escapeHtml(lead.email || "")}" required></div>
+        <div class="field">
+          <label for="phone">Telefone (WhatsApp):</label>
+          <div class="phone-field">
           <select id="country-code" name="country_code" aria-label="País e código DDI">
             <option value="+55" selected>🇧🇷 +55</option>
             <option value="+351">🇵🇹 +351</option>
@@ -568,8 +573,9 @@ function renderLead() {
       </div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" id="lead-submit-button" type="submit">Continuar meu Raio-X</button></div>
-    </form>
+        <div class="fixed-cta"><button class="button button-primary" id="lead-submit-button" type="submit">Continuar meu Raio-X</button></div>
+      </form>
+    </div>
     <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
   const leadForm=document.querySelector("#lead-form");
