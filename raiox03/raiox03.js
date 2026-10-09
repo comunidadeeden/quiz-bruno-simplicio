@@ -633,10 +633,6 @@ function renderOpening() {
     <span class="eyebrow">Raio-X de Percepção</span>
     <h1 class="opening-title">DESCUBRA O SEU NÍVEL DE PERCEPÇÃO EM <span>8 PERGUNTAS RÁPIDAS</span></h1>
     <p class="lead opening-promise">Veja o quanto você consegue perceber sobre uma pessoa pelo comportamento, rosto e corpo e onde seu olhar ainda pode estar deixando sinais passarem despercebidos.</p>
-    <div class="diagnostic-promise">
-      <strong>Seu resultado será montado com base nas suas respostas.</strong>
-      <span>No final, você recebe o seu Raio-X de percepção.</span>
-    </div>
     <div class="quiz-progress-head">
       <span>Pergunta 1 de ${QUESTION_STEPS.length}</span>
       <strong>0% concluído</strong>
@@ -644,7 +640,7 @@ function renderOpening() {
     <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width:0%"></div></div>
     <div class="start-cue" aria-hidden="true">
       <span class="start-cue-text">Escolha uma opção abaixo para começar</span>
-      <span class="start-cue-arrow">↓</span>
+      <span class="start-cue-arrow" style="color:#dc2626">↓</span>
     </div>
     <div class="question-number">${step.label}</div>
     <h2 class="question-title">${step.text}</h2>
@@ -656,6 +652,10 @@ function renderOpening() {
       <img class="raiox-hero-specialist" src="/pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-840.webp" srcset="/pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-200.webp 200w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-300.webp 300w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-400.webp 400w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-840.webp 840w, /pagina03/assets/f72fdaf603c78ea88126ddcb1c1adde3-1420.webp 1420w" sizes="(max-width:560px) 52vw, 330px" loading="eager" decoding="async" alt="Bruno Simplício" width="1420" height="1060">
       <span class="raiox-scan-line" aria-hidden="true"></span>
     </figure>
+    <div class="diagnostic-promise">
+      <strong>Seu resultado será montado com base nas suas respostas.</strong>
+      <span>No final, você recebe o seu Raio-X de percepção.</span>
+    </div>
     <p class="fine-print opening-result-note">Leva poucos minutos. Suas respostas serão usadas para montar o resultado exibido ao final.</p>
   `);
   delete root.dataset.rxPrerendered;
