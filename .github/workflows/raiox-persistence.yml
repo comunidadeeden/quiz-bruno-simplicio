@@ -1,0 +1,76 @@
+name: Validar persistencia RaioX01 e RaioX02
+on:
+  push:
+    branches: [fix/raiox-confirmed-persistence-20261009, main]
+    paths: ['raiox01/**', 'raiox02/**', 'scripts/prepare-raiox-persistence.cjs', 'scripts/raiox-persistence.test.cjs', '.github/workflows/raiox-persistence.yml']
+  pull_request:
+    paths: ['raiox01/**', 'raiox02/**', 'scripts/prepare-raiox-persistence.cjs', 'scripts/raiox-persistence.test.cjs', '.github/workflows/raiox-persistence.yml']
+permissions:
+  contents: read
+concurrency:
+  group: raiox-persistence-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prepare-isolated-branch:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/raiox-confirmed-persistence-20261009' && !contains(github.event.head_commit.message, '[generated]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Preparar apenas os quatro arquivos autorizados
+        run: node scripts/prepare-raiox-persistence.cjs > /tmp/rx-persistence-build.json
+      - name: Validar sintaxe, persistencia e contratos sem trafego real
+        run: |
+          node --check raiox01/raiox01.js
+          node --check raiox02/raiox02.js
+          node --test scripts/raiox-persistence.test.cjs | tee /tmp/rx-persistence.tap
+          node --test scripts/raiox01-collector.test.cjs scripts/raiox02-collector.test.cjs | tee /tmp/rx-collectors.tap
+          git diff --check
+      - name: Salvar exclusivamente na branch de trabalho apos os testes
+        run: |
+          test '${{ github.ref }}' = 'refs/heads/fix/raiox-confirmed-persistence-20261009'
+          python3 - <<'PY'
+          import subprocess
+          allowed={'raiox01/raiox01.js','raiox02/raiox02.js','raiox01/index.html','raiox02/index.html'}
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard'],text=True).splitlines())
+          assert changed == allowed, f'Unexpected changed files: {changed.symmetric_difference(allowed)}'
+          PY
+          git add raiox01/raiox01.js raiox02/raiox02.js raiox01/index.html raiox02/index.html
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(raiox): require confirmed lead, answers and completion before advance [generated]'
+          git push origin HEAD:fix/raiox-confirmed-persistence-20261009
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raiox-persistence-preparation-evidence
+          path: |
+            /tmp/rx-persistence-build.json
+            /tmp/rx-persistence.tap
+            /tmp/rx-collectors.tap
+  verify-source:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validar os arquivos efetivos sem reconstruir ou publicar
+        run: |
+          node --check raiox01/raiox01.js
+          node --check raiox02/raiox02.js
+          node --test scripts/raiox-persistence.test.cjs
+          node --test scripts/raiox01-collector.test.cjs scripts/raiox02-collector.test.cjs
+          git diff --check
+          test -z "$(git status --porcelain)"
