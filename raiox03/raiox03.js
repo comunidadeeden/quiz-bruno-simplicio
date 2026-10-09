@@ -271,6 +271,10 @@ function createState() {
 let leadSavePromise = null;
 let leadSaveInFlight = false;
 let leadPersistenceBlocked = false;
+let leadRetryTimer = null;
+let leadRetryAttempt = 0;
+let leadSaveErrorReported = false;
+const LEAD_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000, 60000];
 const pendingOperationalSaves = new Map();
 let lastAcknowledgedCheckpoint = null;
 
@@ -296,24 +300,47 @@ function requireStoredAck(result) {
   return result;
 }
 
+function clearLeadRetryTimer() {
+  if (leadRetryTimer) window.clearTimeout(leadRetryTimer);
+  leadRetryTimer = null;
+}
+
+function scheduleLeadRetry() {
+  if (state.leadSaved || leadPersistenceBlocked || !state.lead || leadRetryTimer) return;
+  if (leadRetryAttempt >= LEAD_RETRY_DELAYS_MS.length) return;
+  const delay = LEAD_RETRY_DELAYS_MS[leadRetryAttempt++];
+  leadRetryTimer = window.setTimeout(() => {
+    leadRetryTimer = null;
+    void attemptLeadSave();
+  }, delay);
+}
+
 function attemptLeadSave(honey = "") {
+  if (state.leadSaved) return Promise.resolve(true);
   if (leadSaveInFlight && leadSavePromise) return leadSavePromise;
-  if (!state.lead) return Promise.resolve(false);
+  if (leadPersistenceBlocked || !state.lead) return Promise.resolve(false);
   leadPersistenceBlocked = Boolean(String(honey || "").trim());
   leadSaveInFlight = true;
   const submittedLead = {...state.lead};
-  // RX preserves event IDs for retries and resolves only after a matching ACK.
-  // No detached retries that could acknowledge edited form data.
+  // Saving is independent from screen navigation; RX keeps the same event ID on retry.
   leadSavePromise = Promise.resolve()
     .then(() => RX.saveLead(submittedLead, honey))
     .then(result => {
       requireStoredAck(result);
       state.leadSaved = true;
+      clearLeadRetryTimer();
+      leadRetryAttempt = 0;
+      if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
+      if (pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
       return true;
     })
     .catch(() => {
       state.leadSaved = false;
-      RX.emit("rx_form_submit_error", {error_code:leadPersistenceBlocked ? "invalid_form" : "save_failed"});
+      if (!leadSaveErrorReported) {
+        leadSaveErrorReported = true;
+        RX.emit("rx_form_submit_error", {error_code:leadPersistenceBlocked ? "invalid_form" : "save_failed"});
+      }
+      scheduleLeadRetry();
       return false;
     })
     .finally(() => { leadSaveInFlight = false; });
@@ -360,7 +387,14 @@ async function flushOperationalSaves() {
 }
 
 window.addEventListener("online", () => {
+  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave();
   if (state.leadSaved && pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave();
+});
+window.addEventListener("pagehide", () => {
+  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave();
 });
 
 function getTrackingParams() {
@@ -568,31 +602,14 @@ async function handleLeadSubmit(event) {
   const lead={name:"",email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(combinedPhone),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
-  const label = button.textContent;
-  const controls = [...element.querySelectorAll("input,select,textarea")].map(input => ({input,disabled:input.disabled}));
-  button.disabled = true; button.textContent = "Salvando..."; button.setAttribute("aria-busy", "true");
-  controls.forEach(({input}) => input.disabled = true);
+  button.disabled = true;
   document.querySelector("#form-error").textContent = "";
   state.lead = lead;
   state.leadSaved = false;
-  let saved = false;
-  try {
-    saved = await attemptLeadSave(form.get("company_website"));
-  } finally {
-    controls.forEach(({input,disabled}) => input.disabled = disabled);
-    button.disabled = false; button.textContent = label; button.removeAttribute("aria-busy");
-  }
-  if (!saved) {
-    document.querySelector("#form-error").textContent = leadPersistenceBlocked
-      ? "Não foi possível validar o cadastro. Recarregue a página e preencha novamente."
-      : "Não conseguimos salvar seu cadastro. Seus dados continuam preenchidos; confira sua conexão e tente novamente.";
-    return;
-  }
   saveCheckoutPrefill(lead);
+  void attemptLeadSave(form.get("company_website"));
   state.captureViewed = true;
   state.screen="step";
-  // Only persist answers whose collector requests have already been acknowledged.
-  if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
   const active=document.activeElement;
   if(active && typeof active.blur==="function") active.blur();
   render();
