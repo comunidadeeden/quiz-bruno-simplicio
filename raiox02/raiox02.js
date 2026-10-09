@@ -344,7 +344,7 @@ function renderOpening() {
       <div class="field"><label for="phone">Telefone ( Whatsapp):</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="+55 11 99999-9999" value="${escapeHtml(lead.phone || "")}" required></div>
       <div class="rx-honey" aria-hidden="true"><label>Site<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
       <div class="error" id="form-error" role="alert"></div>
-      <div class="fixed-cta"><button class="button button-primary" id="start-button" type="submit">QUERO APRENDER</button></div>
+      <div class="fixed-cta"><button class="button button-primary" id="start-button" type="submit">COMEÇAR MEU RAIO-X →</button></div>
     </form>
     <p class="fine-print">Ao continuar, você solicita o cadastro no quiz e o uso dos dados e respostas para entregar o resultado e os próximos passos deste workshop. ${window.RX_CONFIG.privacyPolicyUrl ? `<a href="${escapeHtml(window.RX_CONFIG.privacyPolicyUrl)}" target="_blank" rel="noopener noreferrer">Política de privacidade</a>` : ""}</p>
   `);
@@ -517,7 +517,7 @@ function renderResult() {
             <small>Em breve</small>
           </div>
         </div>
-        <a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">Garantir Minha Vaga</a>
+        <a class="button button-primary" id="checkout-button" href="${buildCheckoutUrl()}" target="_blank" rel="noopener noreferrer">GARANTIR MINHA VAGA POR R$37</a>
       </div>
     </div>
   `);
