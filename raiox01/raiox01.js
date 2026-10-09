@@ -188,7 +188,7 @@ if(resumed && resumed.leadSaved && resumed.completedSteps.every((id,i)=>STEPS[i]
   const consistent=STEPS.filter(s=>s.type==='question'&&resumed.completedSteps.includes(s.id))
     .every(s=>Number.isInteger(resumed.answerIndexes[s.id])&&resumed.answerIndexes[s.id]>=0&&resumed.answerIndexes[s.id]<s.options.length);
   if(consistent){
-    state={...state,...resumed,lead:null,stepIndex:count,screen:count<7?'step':resumed.screen==='result'?'result':'loading'};
+    state={...state,...resumed,lead:null,stepIndex:count,screen:count<7?'step':'loading'};
     for(const step of STEPS.filter(s=>s.type==='question')){
       const idx=state.answerIndexes[step.id];if(Number.isInteger(idx)&&step.options[idx])state.answers[step.id]=step.options[idx].label;
     }
@@ -219,136 +219,47 @@ function createState() {
 
 let leadSavePromise = null;
 let leadSaveInFlight = false;
-let leadRetryTimer = null;
-let leadRetryAttempt = 0;
-let leadSaveErrorReported = false;
 let leadPersistenceBlocked = false;
-const LEAD_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000, 60000];
-const pendingOperationalSaves = new Map();
-let lastAcknowledgedCheckpoint = null;
 
-function makeAcknowledgedCheckpoint() {
-  return {
-    screen: state.screen,
-    stepIndex: state.stepIndex,
-    leadSaved: true,
-    completedSteps: [...state.completedSteps],
-    answerIndexes: {...state.answerIndexes},
-    resultViewed: state.resultViewed === true,
-    checkoutClicked: state.checkoutClicked === true
-  };
-}
-
-function acknowledgeCheckpoint(snapshot) {
-  lastAcknowledgedCheckpoint = snapshot;
-  if (state.leadSaved) RX.saveCheckpoint(snapshot);
-}
-
-function clearLeadRetryTimer() {
-  if (leadRetryTimer) window.clearTimeout(leadRetryTimer);
-  leadRetryTimer = null;
-}
-
-function markLeadSaved() {
-  state.leadSaved = true;
-  clearLeadRetryTimer();
-  leadRetryAttempt = 0;
-  if (lastAcknowledgedCheckpoint) RX.saveCheckpoint(lastAcknowledgedCheckpoint);
-}
-
-function scheduleLeadRetry() {
-  if (state.leadSaved || leadPersistenceBlocked || !state.lead || leadRetryTimer) return;
-  if (leadRetryAttempt >= LEAD_RETRY_DELAYS_MS.length) return;
-  const delay = LEAD_RETRY_DELAYS_MS[leadRetryAttempt++];
-  leadRetryTimer = window.setTimeout(() => {
-    leadRetryTimer = null;
-    void attemptLeadSave("");
-  }, delay);
+function requireStoredAck(result) {
+  if (!result || result.ok !== true || result.stored !== true) throw new Error("persistence_not_confirmed");
+  return result;
 }
 
 function attemptLeadSave(honey = "") {
-  if (state.leadSaved) return Promise.resolve(true);
-  if (String(honey || "").trim()) leadPersistenceBlocked = true;
-  if (leadPersistenceBlocked || !state.lead) return Promise.resolve(false);
   if (leadSaveInFlight && leadSavePromise) return leadSavePromise;
-
+  if (!state.lead) return Promise.resolve(false);
+  leadPersistenceBlocked = Boolean(String(honey || "").trim());
   leadSaveInFlight = true;
-  leadSavePromise = RX.saveLead(state.lead, honey)
-    .then(() => {
-      markLeadSaved();
+  const submittedLead = {...state.lead};
+  // RX preserves event IDs for retries and resolves only after a matching ACK.
+  // No detached retries that could acknowledge edited form data.
+  leadSavePromise = Promise.resolve()
+    .then(() => RX.saveLead(submittedLead, honey))
+    .then(result => {
+      requireStoredAck(result);
+      state.leadSaved = true;
       return true;
     })
     .catch(() => {
-      if (!leadSaveErrorReported) {
-        leadSaveErrorReported = true;
-        RX.emit("rx_form_submit_error", {error_code:"save_failed"});
-      }
-      scheduleLeadRetry();
+      state.leadSaved = false;
+      RX.emit("rx_form_submit_error", {error_code:leadPersistenceBlocked ? "invalid_form" : "save_failed"});
       return false;
     })
-    .finally(() => {
-      leadSaveInFlight = false;
-    });
+    .finally(() => { leadSaveInFlight = false; });
   return leadSavePromise;
-}
-
-function queueOperationalSave(key, name, details, checkpoint) {
-  const item = {name, details, checkpoint, promise: null};
-  item.promise = ensureLeadSaved()
-    .then(() => RX.saveProgress(name, details))
-    .then(() => {
-      acknowledgeCheckpoint(checkpoint);
-      pendingOperationalSaves.delete(key);
-      return true;
-    })
-    .catch(() => false);
-  pendingOperationalSaves.set(key, item);
 }
 
 async function ensureLeadSaved() {
   if (state.leadSaved) return true;
-  if (leadPersistenceBlocked) throw new Error("lead_not_available");
-  if (leadSavePromise) {
-    const saved = await leadSavePromise;
-    if (saved) return true;
-  }
-  if (!state.lead) throw new Error("lead_not_available");
-  const saved = await attemptLeadSave("");
-  if (!saved) throw new Error("lead_not_confirmed");
-  return true;
+  if (leadSaveInFlight && leadSavePromise && await leadSavePromise) return true;
+  throw new Error("lead_not_confirmed");
 }
 
+// Each preceding operation is acknowledged before this finalization boundary.
 async function flushOperationalSaves() {
   await ensureLeadSaved();
-  for (const [key, item] of [...pendingOperationalSaves.entries()]) {
-    let saved = await item.promise;
-    if (!saved) {
-      try {
-        await ensureLeadSaved();
-        await RX.saveProgress(item.name, item.details);
-        saved = true;
-      } catch (_) {
-        saved = false;
-      }
-    }
-    if (!saved) throw new Error("progress_not_confirmed");
-    acknowledgeCheckpoint(item.checkpoint);
-    pendingOperationalSaves.delete(key);
-  }
 }
-
-window.addEventListener("online", () => {
-  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
-  if (pendingOperationalSaves.size) void flushOperationalSaves().catch(() => {});
-});
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden" && state.lead && !state.leadSaved && !leadPersistenceBlocked) {
-    void attemptLeadSave("");
-  }
-});
-window.addEventListener("pagehide", () => {
-  if (state.lead && !state.leadSaved && !leadPersistenceBlocked) void attemptLeadSave("");
-});
 
 function getTrackingParams() {
   return window.RX.getAttribution();
@@ -413,18 +324,35 @@ function renderLead() {
 async function handleLeadSubmit(event) {
   event.preventDefault();
   const element=event.currentTarget, button=element.querySelector('button[type="submit"]');
-  if(button.disabled)return;
+  if(button.disabled || leadSaveInFlight)return;
   RX.emit("rx_form_submit_attempt", {screen:"lead"});
   const form=new FormData(element);
   const lead={name:String(form.get("name")||"").trim().replace(/\s+/g," "),email:String(form.get("email")||"").trim().toLowerCase(),phone:RX.normalizePhone(form.get("phone")),marketing_contact:false};
   const error=validateLead(lead);
   if(error){document.querySelector("#form-error").textContent=error.message;RX.emit("rx_form_error",{error_code:error.code});return;}
-  button.disabled=true;document.querySelector("#form-error").textContent="";
-  state.lead=lead;
+  const label = button.textContent;
+  const controls = [...element.querySelectorAll("input,select,textarea")].map(input => ({input,disabled:input.disabled}));
+  button.disabled = true; button.textContent = "Salvando..."; button.setAttribute("aria-busy", "true");
+  controls.forEach(({input}) => input.disabled = true);
+  document.querySelector("#form-error").textContent = "";
+  state.lead = lead;
+  state.leadSaved = false;
+  let saved = false;
+  try {
+    saved = await attemptLeadSave(form.get("company_website"));
+  } finally {
+    controls.forEach(({input,disabled}) => input.disabled = disabled);
+    button.disabled = false; button.textContent = label; button.removeAttribute("aria-busy");
+  }
+  if (!saved) {
+    document.querySelector("#form-error").textContent = leadPersistenceBlocked
+      ? "Não foi possível validar o cadastro. Recarregue a página e preencha novamente."
+      : "Não conseguimos salvar seu cadastro. Seus dados continuam preenchidos; confira sua conexão e tente novamente.";
+    return;
+  }
   saveCheckoutPrefill(lead);
-  const honey=form.get("company_website");
-  void attemptLeadSave(honey);
   state.screen="step";
+  RX.saveCheckpoint(state);
   render();
 }
 
@@ -504,15 +432,26 @@ function renderInsight(step, progress) {
     <div class="fixed-cta"><button class="button button-primary" id="continue-button" type="button">${step.button}</button></div>
   `);
   RX.emit("quiz_insight_view", {step_id:step.id,step_index:state.stepIndex+1});
-  document.querySelector("#continue-button").addEventListener("click", () => {
-    const button=document.querySelector("#continue-button");button.disabled=true;clearSaveError();
-    const stepIndex=state.stepIndex+1;
-    const details={step_id:step.id,step_index:stepIndex,step_type:step.type};
-    markStepCompleted(step.id);
-    state.stepIndex+=1;
-    const checkpoint=makeAcknowledgedCheckpoint();
-    queueOperationalSave("insight:"+step.id,"quiz_insight_continue",details,checkpoint);
-    render();
+  document.querySelector("#continue-button").addEventListener("click", async () => {
+    const button = document.querySelector("#continue-button");
+    if (button.disabled || STEPS[state.stepIndex]?.id !== step.id) return;
+    const label = button.textContent;
+    button.disabled = true; button.textContent = "Salvando..."; button.setAttribute("aria-busy", "true");
+    clearSaveError();
+    const details = {step_id:step.id,step_index:state.stepIndex+1,step_type:step.type};
+    try {
+      await ensureLeadSaved();
+      requireStoredAck(await RX.saveProgress("quiz_insight_continue", details));
+      markStepCompleted(step.id);
+      state.stepIndex += 1;
+      RX.saveCheckpoint(state);
+      render();
+    } catch (_) {
+      button.disabled = false;
+      showSaveError("Não conseguimos confirmar esta etapa. Confira sua conexão e tente novamente.");
+    } finally {
+      button.textContent = label; button.removeAttribute("aria-busy");
+    }
   });
 }
 
@@ -521,52 +460,72 @@ function showSaveError(message){
   clearSaveError();const box=document.createElement("p");box.id="quiz-save-error";box.className="error";box.setAttribute("role","alert");box.textContent=message;
   const target=document.querySelector(".panel-inner");if(target)target.appendChild(box);
 }
-function answerStep(step, optionIndex, button) {
-  const option=step.options[optionIndex];
-  document.querySelectorAll(".option").forEach(item=>item.disabled=true);button.classList.add("selected");clearSaveError();
-  const stepIndex=state.stepIndex+1;
-  const completed=state.completedSteps.includes(step.id)?[...state.completedSteps]:[...state.completedSteps,step.id];
-  const details={question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:stepIndex,option_count:step.options.length,completed_steps:completed};
-  if(option.profile)state.profile=option.profile;
-  state.answers[step.id]=option.label;
-  state.answerIndexes[step.id]=optionIndex;
-  markStepCompleted(step.id);
-  const checkpoint=makeAcknowledgedCheckpoint();
-  queueOperationalSave("answer:"+step.id,"quiz_answer",details,checkpoint);
-  RX.emit("quiz_step_complete",{step_id:step.id,step_index:stepIndex,step_type:step.type});
-  state.stepIndex+=1;
-  if(state.stepIndex>=STEPS.length)state.screen="loading";
-  render();
+async function answerStep(step, optionIndex, button) {
+  if (button.disabled || STEPS[state.stepIndex]?.id !== step.id) return;
+  const option = step.options[optionIndex];
+  if (!option) return;
+  const buttons = [...document.querySelectorAll(".option")];
+  buttons.forEach(item => item.disabled = true);
+  button.classList.add("selected");
+  button.setAttribute("aria-busy", "true");
+  clearSaveError();
+  const stepIndex = state.stepIndex + 1;
+  const completed = state.completedSteps.includes(step.id) ? [...state.completedSteps] : [...state.completedSteps, step.id];
+  const details = {question_id:step.id,option_index:optionIndex,answer_label:option.label,selected_profile:option.profile||undefined,step_index:stepIndex,option_count:step.options.length,completed_steps:completed};
+  try {
+    await ensureLeadSaved();
+    requireStoredAck(await RX.saveProgress("quiz_answer", details));
+    if (option.profile) state.profile = option.profile;
+    state.answers[step.id] = option.label;
+    state.answerIndexes[step.id] = optionIndex;
+    markStepCompleted(step.id);
+    RX.emit("quiz_step_complete", {step_id:step.id,step_index:stepIndex,step_type:step.type});
+    state.stepIndex += 1;
+    if (state.stepIndex >= STEPS.length) state.screen = "loading";
+    RX.saveCheckpoint(state);
+    render();
+  } catch (_) {
+    button.classList.remove("selected");
+    buttons.forEach(item => item.disabled = false);
+    showSaveError("Não conseguimos confirmar esta resposta. Confira sua conexão e clique novamente; você continua nesta pergunta.");
+  } finally {
+    button.removeAttribute("aria-busy");
+  }
 }
 
-let completionInFlight=false;
+let completionInFlight = false;
 async function finalizeQuizInBackground() {
-  if(completionInFlight)return;
-  completionInFlight=true;
+  if (completionInFlight || state.screen !== "loading") return;
+  completionInFlight = true;
+  const retry = document.querySelector("#quiz-save-retry");
+  if (retry) { retry.disabled = true; retry.hidden = true; }
+  clearSaveError();
   try {
     await ensureLeadSaved();
     await flushOperationalSaves();
-    const finalAnswers=STEPS.filter(step=>step.type==="question").map(step=>{
-      const optionIndex=state.answerIndexes[step.id],option=step.options[optionIndex];
+    const finalAnswers = STEPS.filter(step => step.type === "question").map(step => {
+      const optionIndex = state.answerIndexes[step.id], option = step.options[optionIndex];
       return {question_id:step.id,option_index:optionIndex,answer_label:option?.label||state.answers[step.id]||"",selected_profile:option?.profile||undefined};
     });
-    const result=await RX.saveProgress("quiz_complete",{step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]});
-    if(!RX.getTestMode() && (result.quiz_status?.finalizou!==true || result.quiz_status?.status!=="concluido" || Number(result.quiz_status?.perguntas_respondidas)!==5 || Number(result.quiz_status?.etapas_concluidas)!==7))throw new Error("completion_not_confirmed");
-    state.leadSaved=true;
-    RX.saveCheckpoint({...state,screen:"result",resultViewed:true});
+    const result = requireStoredAck(await RX.saveProgress("quiz_complete", {step_index:STEPS.length,answers:finalAnswers,completed_steps:[...state.completedSteps]}));
+    if (!RX.getTestMode() && (result.quiz_status?.finalizou !== true || result.quiz_status?.status !== "concluido" || Number(result.quiz_status?.perguntas_respondidas) !== 5 || Number(result.quiz_status?.etapas_concluidas) !== 7)) throw new Error("completion_not_confirmed");
+    state.screen = "result";
+    state.resultViewed = true;
+    RX.saveCheckpoint(state);
+    window.removeEventListener("online", finalizeQuizInBackground);
+    render();
   } catch (_) {
-    // A UI permanece livre. A fila usa IDs estáveis e o fluxo volta a tentar
-    // em recarregamento/retorno de conexão sem bloquear o usuário.
+    showSaveError("Não conseguimos confirmar o salvamento final. Suas respostas permanecem nesta página. Confira sua conexão e tente novamente.");
+    if (retry) { retry.hidden = false; retry.disabled = false; }
     window.addEventListener("online", finalizeQuizInBackground, {once:true});
   } finally {
-    completionInFlight=false;
+    completionInFlight = false;
   }
 }
 
 function renderLoading() {
-  state.screen="result";
-  state.resultViewed=true;
-  render();
+  root.innerHTML = panel('<span class="eyebrow">Seu resultado</span><h2>Confirmando suas respostas</h2><p class="lead" role="status">Estamos salvando sua última etapa.</p><div class="fixed-cta"><button class="button button-primary" id="quiz-save-retry" type="button" hidden>Tentar salvar novamente</button></div>');
+  document.querySelector("#quiz-save-retry").addEventListener("click", finalizeQuizInBackground);
   void finalizeQuizInBackground();
 }
 
