@@ -5,7 +5,7 @@
     pageId: "raioxvsl1",
     pageType: "sales_page",
     source: "raioxvsl1",
-    launch: "BS06OUT2026",
+    launch: "BS13OUT2026",
     endpoint: "https://nklqcamhkwqictdmictb.supabase.co/functions/v1/sales-page-collect",
     sessionMaxAgeMs: 6 * 60 * 60 * 1000,
     queueMaxAgeMs: 24 * 60 * 60 * 1000,

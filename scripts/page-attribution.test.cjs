@@ -14,7 +14,7 @@ for(const page of pages){
  const storage=m=>({getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v)});
  const search='?utm_source=meta&utm_campaign=BS06OUT2026&utm_content=creative123&sck=ad123&src=facebook';
  const document={visibilityState:'visible',referrer:'',querySelectorAll:s=>s==='a[href]'?links:[],addEventListener:add};
- const ctx={document,location:{pathname:'/'+page+'/',search,href:'https://quiz.brunosimplicio.com.br/'+page+'/'+search},navigator:{webdriver:true,userActivation:{hasBeenActive:false}},performance:{now:()=>1000},crypto,URL,URLSearchParams,AbortController,Element,HTMLElement:Element,sessionStorage:storage(session),localStorage:storage(data),getComputedStyle:()=>({display:'block',visibility:'visible'}),setTimeout,clearTimeout,console,addEventListener:add,fetch:async(u,o)=>{let p=JSON.parse(o.body);sent.push(p);return {ok:true,status:200,json:async()=>({ok:true,stored:true,event_id:p.event_id})}}};ctx.window=ctx;
+ const ctx={document,location:{pathname:'/'+page+'/',search,href:'https://quiz.brunosimplicio.com.br/'+page+'/'+search},navigator:{webdriver:true,userActivation:{hasBeenActive:false}},performance:{now:()=>1000},crypto,URL,URLSearchParams,AbortController,Element,HTMLElement:Element,sessionStorage:storage(session),localStorage:storage(data),getComputedStyle:()=>({display:'block',visibility:'visible'}),setTimeout,clearTimeout,console,addEventListener:add,fetch:async(u,o)=>{let p=JSON.parse(o.body);sent.push(p);return {ok:true,status:200,json:async()=>({ok:true,stored:true,event_id:p.event_id,page_id:p.page_id})}}};ctx.window=ctx;
  const file=/pagina0[2-4]/.test(page)?'scripts/sales-page-tracking.js':page+'/tracking.js';
  vm.runInNewContext(fs.readFileSync(root+'/'+file,'utf8'),ctx);
  await new Promise(setImmediate);

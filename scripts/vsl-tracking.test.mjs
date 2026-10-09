@@ -40,6 +40,7 @@ test('vsl01v1 maps desktop/mobile checkout copies to the same 10 logical CTAs',a
  const storage=map=>({getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)});
  class Element {dataset={};href='https://pay.hub.la/XhmUngrBMRpSh984fDuG';textContent='Garanta';id='';classList={contains:()=>false};getAttribute(){return null;}getBoundingClientRect(){return {width:100,height:40};}closest(selector){return selector==='a[href]'?this:null;}}
  const links=Array.from({length:20},()=>new Element());
+ links[0].dataset.vsl01v1FixedCta='1';links[10].dataset.vsl01v1FixedCta='1';
  const document={visibilityState:'visible',referrer:'',querySelectorAll:sel=>sel==='a[href]'?links:[],addEventListener:add(docHandlers)};
  const context={document,location:{search:'',href:'https://quiz.brunosimplicio.com.br/vsl01v1/'},navigator:{webdriver:false,userActivation:{hasBeenActive:true}},performance:{now:()=>1000},crypto,URL,URLSearchParams,AbortController,Element,HTMLElement:Element,sessionStorage:storage(session),localStorage:storage(local),getComputedStyle:()=>({display:'block',visibility:'visible'}),setTimeout,clearTimeout,console,addEventListener:add(windowHandlers),fetch:async(url,opts)=>{const p=JSON.parse(opts.body);sent.push(p);return {ok:true,status:200,json:async()=>({ok:true,stored:true,event_id:p.event_id})};}};
  context.window=context;vm.runInNewContext(fs.readFileSync(new URL('vsl01v1/tracking.js',root),'utf8'),context);
@@ -95,7 +96,7 @@ test('vsl01v1 keeps 10 historical CTAs and tracks delayed post-video CTA separat
  assert.match(tracking,/cta_post_video/);
  assert.match(tracking,/post_video_delayed/);
  assert.equal((html.match(/data-vsl01v1-special-cta="post_video"/g)||[]).length,2);
- assert.match(html,/var DELAY_SECONDS=435;/);
+ assert.match(html,/var DELAY_SECONDS=90;/);
  assert.match(html,/html\.vsl-gated \.vsl-post-video-cta\{display:none!important;visibility:hidden!important\}/);
 });
 
@@ -106,7 +107,7 @@ test('vsl01v1 pre-delay gate hides every non-hero section across wrappers',()=>{
  assert.match(html,/html\.vsl-gated \.v-mob section:not\(\.vsl-pre-delay-hero\)/);
  assert.equal((html.match(/class="vsl-pre-delay-hero"/g)||[]).length,2);
  assert.equal((html.match(/data-vsl01v1-special-cta="post_video"/g)||[]).length,2);
- assert.match(html,/var DELAY_SECONDS=435;/);
+ assert.match(html,/var DELAY_SECONDS=90;/);
 });
 
 
