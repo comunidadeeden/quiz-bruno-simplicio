@@ -2,7 +2,7 @@ const RAIOX_CONFIG = {
   checkoutUrl: "https://pay.hub.la/XhmUngrBMRpSh984fDuG",
   leadWebhookUrl: window.RX_CONFIG.webhookUrl,
   source: "quiz_raiox02",
-  workshopDateText: "13 e 14 de Outubro, às 20h · ao vivo",
+  workshopDateText: "20 e 21 de Outubro, às 20h · ao vivo",
   priceText: "R$37",
   ctaDelaySeconds: 60
 };
