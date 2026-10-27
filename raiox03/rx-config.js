@@ -11,7 +11,7 @@ window.RX_CONFIG = {
   testMode: false, // Produção. Use ?rx_test=1 para homologar sem gravar leads reais.
   source: "quiz_raiox03",
   launch: "raiox03_2026_10", // Contrato direto do Supabase. Não alterar sem atualizar a função de ingestão.
-  campaignTag: "BS13OUT2026", // Tag oficial do lançamento atual.
+  campaignTag: "BS03NOV2026", // Tag oficial do lançamento atual.
   privacyPolicyUrl: "", // Insira a política real do controlador antes de publicar.
   consentVersion: "rx02-2026-09-29",
   enableVkAfterConsent: true,

@@ -7,7 +7,7 @@
     value: 47,
     pageType: "sales_page",
     source: "paginabio",
-    launch: "BS06OUT2026",
+    launch: "BS03NOV2026",
     endpoint: "https://nklqcamhkwqictdmictb.supabase.co/functions/v1/sales-page-collect",
     sessionMaxAgeMs: 6 * 60 * 60 * 1000,
     queueMaxAgeMs: 24 * 60 * 60 * 1000,

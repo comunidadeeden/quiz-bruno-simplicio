@@ -11,7 +11,7 @@
     pageId,
     source: pageId,
     pageType: "sales_page",
-    launch: "BS13OUT2026",
+    launch: "BS03NOV2026",
     endpoint: "https://nklqcamhkwqictdmictb.supabase.co/functions/v1/sales-page-collect",
     currency: "BRL",
     value: 47,
