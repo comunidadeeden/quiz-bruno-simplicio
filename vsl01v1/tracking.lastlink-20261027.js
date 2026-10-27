@@ -1,0 +1,537 @@
+(() => {
+  "use strict";
+
+  const cfg = {
+    pageId: "vsl01v1",
+    pageType: "sales_page",
+    source: "vsl01v1",
+    launch: "BS03NOV2026",
+    endpoint: "https://nklqcamhkwqictdmictb.supabase.co/functions/v1/sales-page-collect",
+    sessionMaxAgeMs: 6 * 60 * 60 * 1000,
+    queueMaxAgeMs: 24 * 60 * 60 * 1000,
+    maxRetries: 2,
+  };
+
+  const uuid = () => crypto.randomUUID
+    ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        return (c === "x" ? r : (r & 3 | 8)).toString(16);
+      });
+
+  const validUuid = (value) =>
+    typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+  const testMode = new URLSearchParams(location.search).get("rx_test") === "1";
+  const stateKey = "vsl01v1_tracking_v1" + (testMode ? "_test" : "");
+  const queueKey = "vsl01v1_delivery_queue_v1" + (testMode ? "_test" : "");
+  let state = null;
+
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(stateKey) || "null");
+    if (
+      saved
+      && validUuid(saved.session_id)
+      && validUuid(saved.page_view_event_id)
+      && Number.isFinite(saved.saved_at)
+      && Date.now() - saved.saved_at >= 0
+      && Date.now() - saved.saved_at < cfg.sessionMaxAgeMs
+    ) state = saved;
+  } catch (_) {}
+
+  if (!state) {
+    state = {
+      session_id: uuid(),
+      page_view_event_id: uuid(),
+      checkout_event_id: null,
+      quality_evidence_event_id: null,
+      quality_evidence_sent: false,
+      cta_view_event_ids: {},
+      cta_click_event_ids: {},
+      saved_at: Date.now(),
+    };
+  }
+
+  const saveState = () => {
+    state.saved_at = Date.now();
+    try { sessionStorage.setItem(stateKey, JSON.stringify(state)); } catch (_) {}
+  };
+  if (!state.cta_view_event_ids || typeof state.cta_view_event_ids !== "object" || Array.isArray(state.cta_view_event_ids)) state.cta_view_event_ids = {};
+  if (!state.cta_click_event_ids || typeof state.cta_click_event_ids !== "object" || Array.isArray(state.cta_click_event_ids)) state.cta_click_event_ids = {};
+  if (!state.cta_click_sent_positions || typeof state.cta_click_sent_positions !== "object" || Array.isArray(state.cta_click_sent_positions)) state.cta_click_sent_positions = {};
+  saveState();
+
+  const eventIdForCta = (bucket, ctaPosition) => {
+    const map = bucket === "view" ? state.cta_view_event_ids : state.cta_click_event_ids;
+    if (validUuid(map[ctaPosition])) return map[ctaPosition];
+    map[ctaPosition] = uuid();
+    saveState();
+    return map[ctaPosition];
+  };
+
+  const pageStartedAt = performance.now();
+  const qualityProperties = (event, interactionKind, target = null, evidenceOnly = false) => ({
+    quality_version: 1,
+    ...(evidenceOnly ? { quality_evidence_only: true } : {}),
+    interaction_trusted: event?.isTrusted === true,
+    page_visible: document.visibilityState === "visible",
+    target_visible: target ? isVisibleCta(target) : true,
+    automation_driver: navigator.webdriver === true,
+    user_activation: navigator.userActivation?.hasBeenActive === true,
+    interaction_kind: interactionKind,
+    dwell_ms: Math.max(0, Math.round(performance.now() - pageStartedAt)),
+  });
+
+  const allowedAttributionKeys = [
+    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id",
+    "utm_adset", "utm_ad", "fbclid", "gclid", "gbraid", "wbraid", "ttclid", "msclkid",
+    "meta_campaign_id", "meta_campaign_name", "meta_adset_id", "meta_adset_name",
+    "meta_ad_id", "meta_ad_name", "meta_creative_id", "meta_creative_name",
+    "meta_platform", "meta_placement", "sck", "xcod",
+  ];
+
+  const incoming = new URLSearchParams(location.search);
+  const attribution = {};
+  for (const key of allowedAttributionKeys) {
+    const value = incoming.get(key);
+    if (value && value.length <= 250 && !value.includes("@")) attribution[key] = value;
+  }
+
+  const safeUrl = (value) => {
+    try {
+      const url = new URL(value, location.href);
+      return /^(https?:)$/.test(url.protocol) ? url.origin + url.pathname : "";
+    } catch (_) {
+      return "";
+    }
+  };
+
+  const loadQueue = () => {
+    try {
+      const rows = JSON.parse(localStorage.getItem(queueKey) || "[]");
+      if (!Array.isArray(rows)) return [];
+      return rows.filter((item) =>
+        item && typeof item === "object"
+        && Number.isFinite(item.queued_at)
+        && Date.now() - item.queued_at >= 0
+        && Date.now() - item.queued_at < cfg.queueMaxAgeMs
+        && item.payload && validUuid(item.payload.event_id)
+      ).slice(-40);
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const saveQueue = (rows) => {
+    try { localStorage.setItem(queueKey, JSON.stringify(rows.slice(-40))); } catch (_) {}
+  };
+
+  const enqueue = (payload) => {
+    const rows = loadQueue().filter((item) => item.payload.event_id !== payload.event_id);
+    rows.push({ queued_at: Date.now(), payload });
+    saveQueue(rows);
+  };
+
+  const removeFromQueue = (eventId) => {
+    saveQueue(loadQueue().filter((item) => item.payload.event_id !== eventId));
+  };
+
+  const deliver = async (payload) => {
+    let lastError = null;
+    for (let attempt = 0; attempt <= cfg.maxRetries; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 20000);
+      try {
+        const response = await fetch(cfg.endpoint, {
+          method: "POST",
+          mode: "cors",
+          credentials: "omit",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+          keepalive: true,
+        });
+        const result = await response.json().catch(() => null);
+        if (
+          response.ok
+          && result?.ok === true
+          && result?.stored === true
+          && result?.event_id === payload.event_id
+        ) {
+          removeFromQueue(payload.event_id);
+          return true;
+        }
+        if (response.status < 500 && response.status !== 429 && response.status !== 409) break;
+        lastError = new Error(result?.code || "delivery_failed");
+      } catch (error) {
+        lastError = error;
+      } finally {
+        clearTimeout(timer);
+      }
+      if (attempt < cfg.maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+      }
+    }
+    enqueue(payload);
+    return false;
+  };
+
+  const inFlight = new Map();
+  const post = (payload) => {
+    if (inFlight.has(payload.event_id)) return inFlight.get(payload.event_id);
+    enqueue(payload);
+    const task = deliver(payload).finally(() => inFlight.delete(payload.event_id));
+    inFlight.set(payload.event_id, task);
+    return task;
+  };
+
+  const basePayload = (eventName, eventId, properties = {}) => ({
+    event_id: eventId,
+    session_id: state.session_id,
+    event_name: eventName,
+    page_id: cfg.pageId,
+    page_type: cfg.pageType,
+    source: cfg.source,
+    lancamento: cfg.launch,
+    occurred_at: new Date().toISOString(),
+    page_url: safeUrl(location.href),
+    referrer: safeUrl(document.referrer),
+    attribution,
+    properties,
+    test_mode: testMode,
+  });
+
+  window.dataLayer = window.dataLayer || [];
+  const pushGtm = (name, eventId, properties = {}) => {
+    if (testMode) return;
+    window.dataLayer.push({ rx: null });
+    window.dataLayer.push({
+      event: "rx_event",
+      rx: {
+        name,
+        event_id: eventId,
+        session_id: state.session_id,
+        quiz_id: cfg.pageId,
+        page_id: cfg.pageId,
+        page_type: cfg.pageType,
+        source: cfg.source,
+        launch: cfg.launch,
+        technical_launch: cfg.pageId,
+        page_location: safeUrl(location.href),
+        page_referrer: safeUrl(document.referrer),
+        analytics: true,
+        advertising: true,
+        test_mode: testMode,
+        traffic: {
+          campaign_source: attribution.utm_source || "",
+          campaign_medium: attribution.utm_medium || "",
+          campaign_name: attribution.utm_campaign || "",
+          campaign_content: attribution.utm_content || "",
+          campaign_term: attribution.utm_term || "",
+          campaign_id: attribution.utm_id || "",
+        },
+        params: { ...properties, session_id: state.session_id },
+      },
+    });
+  };
+
+  const checkoutMarker = "vsl01v1_" + state.session_id.replace(/-/g, "");
+  const trackedKeys = [
+    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id",
+    "utm_adset", "utm_ad", "fbclid", "gclid", "gbraid", "wbraid", "ttclid", "msclkid",
+    "meta_campaign_id", "meta_campaign_name", "meta_adset_id", "meta_adset_name",
+    "meta_ad_id", "meta_ad_name", "meta_creative_id", "meta_creative_name",
+    "meta_platform", "meta_placement", "xcod",
+  ];
+
+  const isCheckoutUrl = (value) => {
+    try {
+      const host = new URL(value, location.href).hostname.toLowerCase();
+      return host === "lastlink.com" || host === "pay.hotmart.com" || host === "hub.la" || host.endsWith(".hub.la");
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const checkoutLinks = () => [...document.querySelectorAll('a[href]')].filter((link) => isCheckoutUrl(link.href));
+  const PHYSICAL_CTA_COUNT = 10;
+
+  const isVisibleCta = (link) => {
+    if (!(link instanceof HTMLElement)) return false;
+    const style = getComputedStyle(link);
+    const rect = link.getBoundingClientRect();
+    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  };
+
+  const reindexVisibleCtas = () => {
+    const links = checkoutLinks();
+    const specialLinks = links.filter((link) => link.dataset.vsl01v1SpecialCta === "post_video");
+    const fixedLinks = links.filter((link) => link.dataset.vsl01v1FixedCta === "1");
+    const regularLinks = links.filter((link) =>
+      link.dataset.vsl01v1SpecialCta !== "post_video"
+      && link.dataset.vsl01v1FixedCta !== "1"
+    );
+
+    // CTA_01 used to be the second button under the VSL. It was moved lower on the page.
+    // Keep its historical identity explicit, while the remaining 9 CTAs stay CTA_02..CTA_10.
+    fixedLinks.forEach((link) => {
+      link.dataset.vsl01v1Cta = "1";
+      link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
+    });
+    regularLinks.forEach((link, index) => {
+      const logicalIndex = index % (PHYSICAL_CTA_COUNT - 1) + 2;
+      link.dataset.vsl01v1Cta = String(logicalIndex);
+      link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
+    });
+    specialLinks.forEach((link) => {
+      delete link.dataset.vsl01v1Cta;
+      link.dataset.rxSalesPageCtaTotal = String(PHYSICAL_CTA_COUNT);
+    });
+    return links.filter(isVisibleCta);
+  };
+
+  const prepareCheckoutLinks = () => {
+    const links = checkoutLinks();
+    links.forEach((link) => {
+      try {
+        const url = new URL(link.href, location.href);
+        if (!isCheckoutUrl(url.toString())) return;
+
+        url.searchParams.set("src", cfg.source);
+        for (const key of trackedKeys) {
+          const value = attribution[key];
+          if (value && value.length <= 250) url.searchParams.set(key, value);
+        }
+
+        // Hubla persiste oficialmente UTMs. Mantém o utm_content original e acrescenta a página de origem.
+        const pageMarker = "pg_" + cfg.pageId;
+        const currentContent = url.searchParams.get("utm_content") || "";
+        const contentParts = currentContent.split("~").filter(Boolean);
+        if (!contentParts.includes(pageMarker)) {
+          url.searchParams.set("utm_content", currentContent ? currentContent + "~" + pageMarker : pageMarker);
+        }
+
+        const markerPattern = /(?:^|~)vsl01v1_[0-9a-f]{32}(?=~|$)/gi;
+        const inboundSck = (attribution.sck || url.searchParams.get("sck") || "")
+          .replace(markerPattern, "")
+          .replace(/^~|~$/g, "");
+        const combined = inboundSck ? inboundSck + "~" + checkoutMarker : checkoutMarker;
+
+        if (combined.length <= 255) url.searchParams.set("sck", combined);
+        else if (inboundSck && inboundSck.length <= 255) url.searchParams.set("sck", inboundSck);
+
+        link.href = url.toString();
+      } catch (_) {}
+    });
+    return reindexVisibleCtas();
+  };
+
+  const ctaProperties = (link) => {
+    const rawIndex = Number(link.dataset.vsl01v1Cta);
+    const ctaIndex = Number.isInteger(rawIndex) && rawIndex > 0 ? rawIndex : 0;
+    const rawTotal = Number(link.dataset.rxSalesPageCtaTotal);
+    const ctaTotal = Number.isInteger(rawTotal) && rawTotal > 0 ? rawTotal : PHYSICAL_CTA_COUNT;
+    const isPostVideo = link.dataset.vsl01v1SpecialCta === "post_video";
+    const ctaPosition = isPostVideo
+      ? "cta_post_video"
+      : ctaIndex > 0
+        ? "cta_" + String(ctaIndex).padStart(2, "0")
+        : "cta";
+    return {
+      cta_position: ctaPosition,
+      cta_index: ctaIndex,
+      cta_total: ctaTotal,
+      cta_text: (link.textContent || "").trim().replace(/\s+/g, " ").slice(0, 120),
+      ...(isPostVideo ? { cta_role: "post_video_delayed" } : {}),
+    };
+  };
+
+  const viewedCtas = new Set();
+  const trackCtaView = (link) => {
+    const properties = ctaProperties(link);
+    if ((!properties.cta_index && properties.cta_position !== "cta_post_video") || viewedCtas.has(properties.cta_position)) return;
+    viewedCtas.add(properties.cta_position);
+    const eventId = eventIdForCta("view", properties.cta_position);
+    pushGtm("rx_sales_page_cta_view", eventId, properties);
+    void post(basePayload("cta_view", eventId, properties));
+  };
+
+  let ctaObserver = null;
+  const observeVisibleCtas = () => {
+    const visible = reindexVisibleCtas();
+    if (ctaObserver) ctaObserver.disconnect();
+    if (!("IntersectionObserver" in window)) return visible;
+    ctaObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) continue;
+        trackCtaView(entry.target);
+        ctaObserver?.unobserve(entry.target);
+      }
+    }, { threshold: [0.35] });
+    visible.forEach((link) => ctaObserver.observe(link));
+    return visible;
+  };
+
+  const sendQualityEvidence = (event, interactionKind, target = null) => {
+    if (state.quality_evidence_sent) return;
+    const quality = qualityProperties(event, interactionKind, target, true);
+    if (!quality.interaction_trusted || !quality.page_visible || quality.automation_driver || quality.dwell_ms < 250) return;
+    if (!validUuid(state.quality_evidence_event_id)) state.quality_evidence_event_id = uuid();
+    state.quality_evidence_sent = true;
+    saveState();
+    void post(basePayload("cta_click", state.quality_evidence_event_id, quality));
+  };
+
+  const bindQualityEvidence = () => {
+    const handler = (event) => {
+      const kind = event.type === "pointerdown" ? "pointer"
+        : event.type === "touchstart" ? "touch"
+          : event.type === "keydown" ? "keyboard"
+            : "wheel";
+      sendQualityEvidence(event, kind);
+    };
+    window.addEventListener("pointerdown", handler, { capture: true, passive: true });
+    window.addEventListener("touchstart", handler, { capture: true, passive: true });
+    window.addEventListener("keydown", handler, { capture: true });
+    window.addEventListener("wheel", handler, { capture: true, passive: true });
+  };
+
+  const genericButtonSeen = new WeakSet();
+  let genericButtonSequence = 0;
+
+  const genericButtonProperties = (element) => {
+    if (!element.dataset.rxButtonId) {
+      genericButtonSequence += 1;
+      element.dataset.rxButtonId = "button_" + String(genericButtonSequence).padStart(2, "0");
+      element.dataset.rxButtonIndex = String(genericButtonSequence);
+    }
+    const text = (
+      element.getAttribute("aria-label")
+      || element.textContent
+      || element.getAttribute("title")
+      || "Botão"
+    ).trim().replace(/\s+/g, " ").slice(0, 120);
+    return {
+      cta_position: element.dataset.rxButtonId,
+      cta_index: 0, // Generic buttons are not checkout CTA positions.
+      cta_total: document.querySelectorAll("button").length,
+      cta_text: text,
+      element_id: element.id || element.dataset.rxButtonId,
+      element_type: element.classList.contains("vf") ? "video_testimonial" : "button",
+    };
+  };
+
+  const bindGenericButtonTracking = () => {
+    document.querySelectorAll("button").forEach((button) => {
+      if (genericButtonSeen.has(button)) return;
+      genericButtonSeen.add(button);
+      genericButtonProperties(button);
+    });
+  };
+
+  document.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!button) return;
+    bindGenericButtonTracking();
+    const properties = {
+      ...genericButtonProperties(button),
+      ...qualityProperties(event, "pointer", button),
+    };
+    const eventId = uuid();
+    pushGtm("rx_page_button_click", eventId, properties);
+    void post(basePayload("cta_click", eventId, properties));
+  }, { capture: true });
+
+  const flushQueue = async () => {
+    const rows = loadQueue();
+    for (const item of rows) {
+      await post(item.payload);
+    }
+  };
+
+  const pageViewPayload = basePayload("page_view", state.page_view_event_id, {
+    metric: "sales_page_view",
+  });
+  pushGtm("page_view", state.page_view_event_id, {
+    metric: "sales_page_view",
+  });
+  void post(pageViewPayload);
+
+  prepareCheckoutLinks();
+  observeVisibleCtas();
+  bindGenericButtonTracking();
+  bindQualityEvidence();
+  void flushQueue();
+
+  document.addEventListener("click", (event) => {
+    const link = event.target instanceof Element
+      ? event.target.closest('a[href]')
+      : null;
+    if (!link || !isCheckoutUrl(link.href)) return;
+
+    if (!link.dataset.vsl01v1Cta) reindexVisibleCtas();
+    let checkoutDomain = "";
+    try { checkoutDomain = new URL(link.href, location.href).hostname.toLowerCase(); } catch (_) {}
+    const cta = ctaProperties(link);
+    const properties = {
+      ...cta,
+      ...qualityProperties(event, "checkout", link),
+      checkout_provider: checkoutDomain === "lastlink.com" ? "lastlink" : checkoutDomain.endsWith("hub.la") ? "hubla" : (checkoutDomain === "pay.hotmart.com" ? "hotmart" : "other"),
+      checkout_domain: checkoutDomain,
+      element_id: link.id || cta.cta_position || "",
+      element_type: "checkout_link",
+      link_path: (() => { try { return new URL(link.href, location.href).pathname.slice(0,120); } catch (_) { return ""; } })(),
+      currency: "BRL",
+      value: 37,
+    };
+    sendQualityEvidence(event, "checkout", link);
+    trackCtaView(link);
+
+    if ((properties.cta_index || properties.cta_position === "cta_post_video") && state.cta_click_sent_positions[properties.cta_position] !== true) {
+      const ctaClickEventId = eventIdForCta("click", properties.cta_position);
+      const clickPayload = basePayload("cta_click", ctaClickEventId, properties);
+      // Queue before recording the logical send: navigation must not lose retries.
+      enqueue(clickPayload);
+      state.cta_click_sent_positions[properties.cta_position] = true;
+      saveState();
+      pushGtm("rx_sales_page_cta_click", ctaClickEventId, properties);
+      void post(clickPayload);
+    }
+
+    if (state.checkout_event_sent !== true) {
+      if (!validUuid(state.checkout_event_id)) state.checkout_event_id = uuid();
+      const checkoutPayload = basePayload("checkout_click", state.checkout_event_id, properties);
+      enqueue(checkoutPayload);
+      state.checkout_event_sent = true;
+      saveState();
+      pushGtm("rx_checkout_click", state.checkout_event_id, properties);
+      void post(checkoutPayload);
+    }
+  }, { capture: true });
+
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => observeVisibleCtas(), 180);
+  });
+
+  const emitVslEvent = (name) => {
+    if (!state.vsl_event_ids) state.vsl_event_ids = {};
+    if (validUuid(state.vsl_event_ids[name])) return;
+    const eventId = uuid();
+    state.vsl_event_ids[name] = eventId;
+    saveState();
+    pushGtm(name, eventId);
+    void post(basePayload(name, eventId));
+  };
+  window.addEventListener("vsl:started", () => emitVslEvent("vsl_started"));
+  window.addEventListener("vsl:revealed", () => {
+    emitVslEvent("vsl_offer_revealed");
+    prepareCheckoutLinks();
+    observeVisibleCtas();
+    bindGenericButtonTracking();
+  });
+
+  window.addEventListener("online", () => void flushQueue());
+})();
